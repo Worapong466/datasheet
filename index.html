@@ -11,6 +11,23 @@
 <meta property="og:description" content="เปิดดู / ดาวน์โหลด Datasheet อินเวอร์เตอร์และอุปกรณ์โซลาร์ ฟรี">
 <meta property="og:image" content="https://worapong466.github.io/datasheet/assets/logo.webp">
 <meta property="og:type" content="website">
+<!-- Google Analytics 4 (ตัวเดียวกับร้าน scdpower.com) + Consent Mode v2 ตาม PDPA -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag("consent", "default", {
+    ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied",
+    analytics_storage: "denied", wait_for_update: 500
+  });
+  try {
+    if (localStorage.getItem("cookie-consent") === "granted") {
+      gtag("consent", "update", { ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted", analytics_storage: "granted" });
+    }
+  } catch (e) {}
+  gtag("js", new Date());
+  gtag("config", "G-DG31T3V2TJ");
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-DG31T3V2TJ"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -137,6 +154,13 @@
     font-size: .9rem; opacity: 0; transition: opacity .2s; pointer-events: none;
   }
   .toast.show { opacity: 1; }
+  .consent {
+    position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 20; max-width: 760px; margin: 0 auto;
+    background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 14px 16px;
+    display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem;
+  }
+  .consent p { margin: 0; flex: 1 1 320px; color: var(--muted); }
   @media (max-width: 600px) {
     .picker { grid-template-columns: 1fr; }
     header h1 { font-size: 1.25rem; }
@@ -206,6 +230,14 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="consent" id="consent" hidden role="dialog" aria-label="การใช้คุกกี้">
+  <p>🍪 เว็บไซต์นี้ใช้คุกกี้เพื่อวิเคราะห์การใช้งาน และนำเสนอโฆษณาที่ตรงกับความสนใจของคุณ</p>
+  <div class="btns">
+    <button class="btn ghost" type="button" id="consentNo">ปฏิเสธ</button>
+    <button class="btn" type="button" id="consentYes">ยอมรับ</button>
+  </div>
+</div>
+
 <script>
   // ===== ตั้งค่าร้าน (แก้ตรงนี้ได้) =====
   const CONFIG = {
@@ -233,17 +265,37 @@
       return u.href;
     } catch { return url; }
   }
-  function goHome(e) { e.preventDefault(); location.href = withUtm(CONFIG.homeUrl, currentModel()); }
+  // ---------- GA4 events ----------
+  let lastViewed = "";
+  const item = (brand, model) => ({ item_brand: brand, item_name: model });
+  const currentItem = () => item(brandSel.value || "", modelSel.value || "");
+  function track(name, params = {}, then) {
+    let done = false;
+    const go = () => { if (!done) { done = true; then && then(); } };
+    try { gtag("event", name, { ...params, traffic_from: visitorSource, event_callback: go }); } catch (e) {}
+    if (then) setTimeout(go, 600); // ถ้า GA โหลดไม่ขึ้น (เช่นโดนบล็อก) ก็ยังไปต่อได้
+  }
+
+  function goHome(e) {
+    e.preventDefault();
+    const url = withUtm(CONFIG.homeUrl, currentModel());
+    track("click_shop", currentItem(), () => { location.href = url; });
+  }
 
   document.title = "SolarCellDIY · " + CONFIG.siteName;
   $("siteName").textContent = CONFIG.siteName;
   if (CONFIG.homeUrl) { $("logoLink").href = CONFIG.homeUrl; $("logoLink").onclick = goHome; }
   if (CONFIG.lineUrl) { $("lineBtn").href = $("ctaLine").href = CONFIG.lineUrl; $("lineBtn").hidden = false; }
+  // ทัก/เพิ่มเพื่อน LINE = lead (ใช้เป็น conversion ใน Google Ads)
+  $("lineBtn").addEventListener("click", () => track("generate_lead", { ...currentItem(), method: "line", placement: "header" }));
+  $("ctaLine").addEventListener("click", () => track("generate_lead", { ...currentItem(), method: "line", placement: "model_page" }));
+  $("lineShareBtn").addEventListener("click", () => track("share", { ...currentItem(), method: "line", content_type: "datasheet" }));
   if (CONFIG.homeUrl) {
     for (const id of ["homeBtn", "ctaHome"]) { $(id).href = CONFIG.homeUrl; $(id).hidden = false; $(id).onclick = goHome; }
   }
-  // ลิงก์แชร์รุ่นปัจจุบัน — ติด ?ref=share ไว้ คนที่เปิดจากลิงก์นี้จะถูกนับเป็น "มาจากการแชร์"
-  const shareUrl = () => location.origin + location.pathname + "?ref=share" + location.hash;
+  // ลิงก์แชร์รุ่นปัจจุบัน — ติด UTM ไว้ คนที่เปิดจากลิงก์นี้ GA4 จะนับเป็น "มาจากการแชร์" (source = datasheet_share)
+  const shareUrl = () => location.origin + location.pathname +
+    "?utm_source=datasheet_share&utm_medium=share&utm_campaign=datasheet" + location.hash;
 
   const fileUrl = (path) => path.split("/").map(encodeURIComponent).join("/");
   const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
@@ -293,16 +345,24 @@
         </div>
         <div class="btns">
           <button class="btn" type="button" data-view="${i}">เปิดดู</button>
-          <a class="btn ghost" href="${fileUrl(d.path)}" download>ดาวน์โหลด</a>
+          <a class="btn ghost" href="${fileUrl(d.path)}" download data-dl="${i}">ดาวน์โหลด</a>
         </div>
       </div>`).join("");
 
+    const docEvent = (d, method) => track("download_datasheet", { ...item(b.name, m.name), file_name: d.name, method });
     $("docs").querySelectorAll("[data-view]").forEach((btn) => {
-      btn.onclick = () => openDoc(m.docs[+btn.dataset.view]);
+      btn.onclick = () => { const d = m.docs[+btn.dataset.view]; docEvent(d, "view"); openDoc(d); };
+    });
+    $("docs").querySelectorAll("[data-dl]").forEach((a) => {
+      a.addEventListener("click", () => docEvent(m.docs[+a.dataset.dl], "download"));
     });
     if (m.docs.length === 1 && canEmbedPdf()) openDoc(m.docs[0]);
 
     detail.classList.add("show");
+    if (lastViewed !== b.name + "/" + m.name) {
+      lastViewed = b.name + "/" + m.name;
+      track("view_datasheet", item(b.name, m.name));
+    }
     $("cta").hidden = !CONFIG.lineUrl && !CONFIG.homeUrl;
     if (updateHash) history.replaceState(null, "", location.search + "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
     $("lineShareBtn").href = "https://social-plugins.line.me/lineit/share?url=" + encodeURIComponent(shareUrl());
@@ -358,11 +418,26 @@
     const url = shareUrl();
     const title = `Datasheet ${$("dBrand").textContent} ${$("dModel").textContent}`;
     if (navigator.share) {
-      try { await navigator.share({ title, url }); return; } catch (e) { if (e.name === "AbortError") return; }
+      try { await navigator.share({ title, url }); track("share", { ...currentItem(), method: "native", content_type: "datasheet" }); return; }
+      catch (e) { if (e.name === "AbortError") return; }
     }
+    track("share", { ...currentItem(), method: "copy_link", content_type: "datasheet" });
     try { await navigator.clipboard.writeText(url); toast("คัดลอกลิงก์แล้ว ส่งต่อให้เพื่อนได้เลย"); }
     catch { prompt("คัดลอกลิงก์นี้:", url); }
   };
+
+  // ---------- แบนเนอร์คุกกี้ (PDPA) ----------
+  let consentChoice = null;
+  try { consentChoice = localStorage.getItem("cookie-consent"); } catch (e) {}
+  if (!consentChoice) $("consent").hidden = false;
+  function setConsent(granted) {
+    const v = granted ? "granted" : "denied";
+    try { localStorage.setItem("cookie-consent", v); } catch (e) {}
+    gtag("consent", "update", { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
+    $("consent").hidden = true;
+  }
+  $("consentYes").onclick = () => setConsent(true);
+  $("consentNo").onclick = () => setConsent(false);
 
   fetch("data.json", { cache: "no-store" })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })

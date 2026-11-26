@@ -49,10 +49,22 @@
   header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
   header p { margin: 4px 0 0; opacity: .85; font-size: .95rem; }
   .header-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-  .line-btn {
-    background: #06c755; color: #fff; text-decoration: none;
-    padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: .9rem;
+  [hidden] { display: none !important; }
+  .head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .line-btn, .home-btn {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none; cursor: pointer;
+    padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: .9rem; font-family: inherit; border: 0;
   }
+  .line-btn { background: #06c755; color: #fff; }
+  .home-btn { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+  .home-btn:hover { background: rgba(255,255,255,.24); }
+  .cta {
+    margin-top: 16px; padding: 14px; border-radius: 12px; background: var(--brand-soft);
+    display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  .cta b { display: block; }
+  .cta span { color: var(--muted); font-size: .88rem; }
+  .cta .head-btns .home-btn { background: transparent; color: var(--brand); border-color: var(--brand); }
   main { padding: 20px 0 48px; }
   .card {
     background: var(--card);
@@ -128,7 +140,10 @@
       <h1 id="siteName">Datasheet สินค้า</h1>
       <p>เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลดเอกสาร</p>
     </div>
-    <a id="lineBtn" class="line-btn" target="_blank" rel="noopener" hidden>สอบถามทาง LINE</a>
+    <div class="head-btns">
+      <a id="homeBtn" class="home-btn" hidden>← กลับหน้าร้าน</a>
+      <a id="lineBtn" class="line-btn" target="_blank" rel="noopener" hidden>＋ เพิ่มเพื่อน LINE</a>
+    </div>
   </div>
 </header>
 
@@ -157,10 +172,20 @@
         <div class="brand" id="dBrand"></div>
         <h2 id="dModel"></h2>
       </div>
-      <button class="btn ghost" id="shareBtn" type="button">คัดลอกลิงก์รุ่นนี้</button>
+      <div class="btns">
+        <button class="btn ghost" id="shareBtn" type="button">แชร์รุ่นนี้</button>
+        <a class="btn ghost" id="lineShareBtn" target="_blank" rel="noopener" style="border-color:#06c755;color:#06a648">แชร์ทาง LINE</a>
+      </div>
     </div>
     <div id="docs"></div>
     <div class="viewer" id="viewer"></div>
+    <div class="cta" id="cta" hidden>
+      <div><b>สนใจรุ่นนี้ หรืออยากให้ช่วยออกแบบระบบ?</b><span>ทัก LINE สอบถามราคา / ปรึกษาฟรี</span></div>
+      <div class="head-btns">
+        <a class="line-btn" id="ctaLine" target="_blank" rel="noopener">ทัก LINE</a>
+        <a class="home-btn" id="ctaHome" hidden>ดูสินค้าในร้าน</a>
+      </div>
+    </div>
   </section>
 
   <p class="stats" id="stats"></p>
@@ -171,8 +196,9 @@
 <script>
   // ===== ตั้งค่าร้าน (แก้ตรงนี้ได้) =====
   const CONFIG = {
-    siteName: "Datasheet สินค้า",   // ชื่อที่แสดงบนหัวเว็บ
-    lineUrl: ""                      // ลิงก์ LINE ร้าน เช่น "https://lin.ee/xxxx" (เว้นว่าง = ไม่แสดงปุ่ม)
+    siteName: "Datasheet สินค้า",            // ชื่อที่แสดงบนหัวเว็บ
+    lineUrl: "https://lin.ee/Tj2tkal",        // ลิงก์เพิ่มเพื่อน LINE OA (เว้นว่าง = ไม่แสดงปุ่ม)
+    homeUrl: ""                                // ลิงก์หน้าร้าน LnwShop เช่น "https://xxxx.lnwshop.com" (เว้นว่าง = ไม่แสดงปุ่ม)
   };
   // ====================================
 
@@ -180,9 +206,30 @@
   const brandSel = $("brand"), modelSel = $("model"), search = $("search"), results = $("results");
   let DATA = { brands: [] };
 
+  // คนที่เข้ามาจากลิงก์ที่ลูกค้าแชร์ (?ref=share) — ส่งต่อไปยังหน้าร้านด้วย UTM เพื่อให้ Analytics ของร้านเห็นแหล่งที่มา
+  const params = new URLSearchParams(location.search);
+  const visitorSource = params.get("utm_source") || (params.get("ref") === "share" ? "datasheet_share" : "datasheet");
+  const currentModel = () => modelSel.value || "";
+  function withUtm(url, content) {
+    try {
+      const u = new URL(url);
+      u.searchParams.set("utm_source", visitorSource);
+      u.searchParams.set("utm_medium", "referral");
+      u.searchParams.set("utm_campaign", "datasheet");
+      if (content) u.searchParams.set("utm_content", content);
+      return u.href;
+    } catch { return url; }
+  }
+  function goHome(e) { e.preventDefault(); location.href = withUtm(CONFIG.homeUrl, currentModel()); }
+
   document.title = CONFIG.siteName;
   $("siteName").textContent = CONFIG.siteName;
-  if (CONFIG.lineUrl) { $("lineBtn").href = CONFIG.lineUrl; $("lineBtn").hidden = false; }
+  if (CONFIG.lineUrl) { $("lineBtn").href = $("ctaLine").href = CONFIG.lineUrl; $("lineBtn").hidden = false; }
+  if (CONFIG.homeUrl) {
+    for (const id of ["homeBtn", "ctaHome"]) { $(id).href = CONFIG.homeUrl; $(id).hidden = false; $(id).onclick = goHome; }
+  }
+  // ลิงก์แชร์รุ่นปัจจุบัน — ติด ?ref=share ไว้ คนที่เปิดจากลิงก์นี้จะถูกนับเป็น "มาจากการแชร์"
+  const shareUrl = () => location.origin + location.pathname + "?ref=share" + location.hash;
 
   const fileUrl = (path) => path.split("/").map(encodeURIComponent).join("/");
   const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
@@ -242,7 +289,9 @@
     if (m.docs.length === 1 && canEmbedPdf()) openDoc(m.docs[0]);
 
     detail.classList.add("show");
-    if (updateHash) history.replaceState(null, "", "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
+    $("cta").hidden = !CONFIG.lineUrl && !CONFIG.homeUrl;
+    if (updateHash) history.replaceState(null, "", location.search + "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
+    $("lineShareBtn").href = "https://social-plugins.line.me/lineit/share?url=" + encodeURIComponent(shareUrl());
   }
 
   function openDoc(d) {
@@ -292,8 +341,13 @@
   search.oninput = runSearch;
   window.addEventListener("hashchange", fromHash);
   $("shareBtn").onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); toast("คัดลอกลิงก์แล้ว ส่งให้ลูกค้าได้เลย"); }
-    catch { prompt("คัดลอกลิงก์นี้:", location.href); }
+    const url = shareUrl();
+    const title = `Datasheet ${$("dBrand").textContent} ${$("dModel").textContent}`;
+    if (navigator.share) {
+      try { await navigator.share({ title, url }); return; } catch (e) { if (e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(url); toast("คัดลอกลิงก์แล้ว ส่งต่อให้เพื่อนได้เลย"); }
+    catch { prompt("คัดลอกลิงก์นี้:", url); }
   };
 
   fetch("data.json", { cache: "no-store" })

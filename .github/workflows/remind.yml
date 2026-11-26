@@ -1,7 +1,7 @@
 name: Datasheet reminder
 
-# เน€เธ•เธทเธญเธเธฃเธธเนเธเธ—เธตเนเธขเธฑเธเนเธกเนเธกเธต Datasheet เธ—เธธเธเธงเธฑเธเธเธฑเธเธ—เธฃเน 08:00 เน€เธงเธฅเธฒเนเธ—เธข (01:00 UTC)
-# เธเธ”เธฃเธฑเธเน€เธญเธเนเธ”เนเธ—เธตเนเนเธ—เนเธ Actions โ’ Datasheet reminder โ’ Run workflow
+# เตือนรุ่นที่ยังไม่มี Datasheet ทุกวันจันทร์ 08:00 เวลาไทย (01:00 UTC)
+# กดรันเองได้ที่แท็บ Actions → Datasheet reminder → Run workflow
 on:
   schedule:
     - cron: "0 1 * * 1"

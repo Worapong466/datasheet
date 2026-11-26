@@ -19,11 +19,20 @@
     ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied",
     analytics_storage: "denied", wait_for_update: 500
   });
-  try {
-    if (localStorage.getItem("cookie-consent") === "granted") {
-      gtag("consent", "update", { ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted", analytics_storage: "granted" });
-    }
-  } catch (e) {}
+  // ค่าที่ลูกค้าเลือกไว้: { analytics: true/false, ads: true/false }
+  function readConsent() {
+    try {
+      const raw = localStorage.getItem("cookie-consent");
+      if (raw === "granted") return { analytics: true, ads: true };
+      if (raw === "denied") return { analytics: false, ads: false };
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function applyConsent(c) {
+    const a = c.analytics ? "granted" : "denied", m = c.ads ? "granted" : "denied";
+    gtag("consent", "update", { analytics_storage: a, ad_storage: m, ad_user_data: m, ad_personalization: m });
+  }
+  if (readConsent()) applyConsent(readConsent());
   gtag("js", new Date());
   gtag("config", "G-DG31T3V2TJ");
 </script>
@@ -161,6 +170,19 @@
     display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem;
   }
   .consent p { margin: 0; flex: 1 1 320px; color: var(--muted); }
+  .consent p b { color: var(--text); }
+  .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--brand); text-decoration: underline; cursor: pointer; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(10,15,30,.55); z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: var(--card); color: var(--text); border-radius: 16px; max-width: 480px; width: 100%; padding: 20px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin: 0 0 6px; font-size: 1.15rem; }
+  .modal > p { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; border-top: 1px solid var(--line); padding: 12px 0; }
+  label.opt { font-weight: 400; color: var(--text); margin: 0; font-size: 1rem; cursor: pointer; }
+  .opt b { display: block; }
+  .opt span { color: var(--muted); font-size: .85rem; }
+  .opt input { width: 20px; height: 20px; flex: none; margin-top: 3px; accent-color: #1b3a6b; }
+  .opt .always { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+  .modal .btns { justify-content: flex-end; margin-top: 8px; }
   @media (max-width: 600px) {
     .picker { grid-template-columns: 1fr; }
     header h1 { font-size: 1.25rem; }
@@ -226,15 +248,40 @@
   </section>
 
   <p class="stats" id="stats"></p>
+  <p class="stats"><button class="linklike" type="button" id="cookieLink">ตั้งค่าคุกกี้</button></p>
 </main>
 
 <div class="toast" id="toast"></div>
 
 <div class="consent" id="consent" hidden role="dialog" aria-label="การใช้คุกกี้">
-  <p>🍪 เว็บไซต์นี้ใช้คุกกี้เพื่อวิเคราะห์การใช้งาน และนำเสนอโฆษณาที่ตรงกับความสนใจของคุณ</p>
+  <p>🍪 ช่วยเราพัฒนาเว็บ และแนะนำสินค้าที่ตรงกับคุณ — <b>เราไม่เก็บชื่อหรือเบอร์โทรของคุณ</b></p>
   <div class="btns">
+    <button class="btn ghost" type="button" id="consentSettings">ตั้งค่า</button>
     <button class="btn ghost" type="button" id="consentNo">ปฏิเสธ</button>
-    <button class="btn" type="button" id="consentYes">ยอมรับ</button>
+    <button class="btn" type="button" id="consentYes">ยอมรับทั้งหมด</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="cookieModal" hidden role="dialog" aria-modal="true" aria-labelledby="cookieTitle">
+  <div class="modal">
+    <h3 id="cookieTitle">ตั้งค่าคุกกี้</h3>
+    <p>เลือกได้ว่าจะให้เราใช้คุกกี้ประเภทไหน เปลี่ยนใจได้ตลอดจากลิงก์ "ตั้งค่าคุกกี้" ท้ายหน้า</p>
+    <div class="opt">
+      <div><b>จำเป็นต่อการใช้งาน</b><span>ทำให้เว็บทำงานได้ เช่น จำการตั้งค่านี้</span></div>
+      <span class="always">เปิดเสมอ</span>
+    </div>
+    <label class="opt">
+      <div><b>วิเคราะห์การใช้งาน</b><span>นับจำนวนผู้เข้าชม และดูว่ารุ่นไหนคนสนใจ เพื่อปรับปรุงเว็บ</span></div>
+      <input type="checkbox" id="optAnalytics">
+    </label>
+    <label class="opt">
+      <div><b>โฆษณา</b><span>แสดงโฆษณาสินค้าที่ตรงกับความสนใจของคุณบน Google และ YouTube</span></div>
+      <input type="checkbox" id="optAds">
+    </label>
+    <div class="btns">
+      <button class="btn ghost" type="button" id="cookieSave">บันทึกการตั้งค่า</button>
+      <button class="btn" type="button" id="cookieAll">ยอมรับทั้งหมด</button>
+    </div>
   </div>
 </div>
 
@@ -362,6 +409,7 @@
     if (lastViewed !== b.name + "/" + m.name) {
       lastViewed = b.name + "/" + m.name;
       track("view_datasheet", item(b.name, m.name));
+      setTimeout(askConsent, 1500); // ถามหลังลูกค้าได้เห็นเนื้อหาแล้ว
     }
     $("cta").hidden = !CONFIG.lineUrl && !CONFIG.homeUrl;
     if (updateHash) history.replaceState(null, "", location.search + "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
@@ -427,17 +475,37 @@
   };
 
   // ---------- แบนเนอร์คุกกี้ (PDPA) ----------
-  let consentChoice = null;
-  try { consentChoice = localStorage.getItem("cookie-consent"); } catch (e) {}
-  if (!consentChoice) $("consent").hidden = false;
-  function setConsent(granted) {
-    const v = granted ? "granted" : "denied";
-    try { localStorage.setItem("cookie-consent", v); } catch (e) {}
-    gtag("consent", "update", { ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v });
+  // ยอมรับ / ปฏิเสธ กดครั้งเดียวจบ ส่วน "ตั้งค่า" เป็นทางเลือกสำหรับคนที่อยากเลือกเอง
+  // แบนเนอร์โผล่หลังลูกค้าเปิดดูรุ่นแรก (หรือหลัง 20 วินาที) — ไม่บังเนื้อหา ใช้เว็บได้ตลอด
+  function saveConsent(c) {
+    try { localStorage.setItem("cookie-consent", JSON.stringify(c)); } catch (e) {}
+    applyConsent(c);
     $("consent").hidden = true;
+    $("cookieModal").hidden = true;
   }
-  $("consentYes").onclick = () => setConsent(true);
-  $("consentNo").onclick = () => setConsent(false);
+  let bannerTimer = null;
+  function askConsent() {
+    clearTimeout(bannerTimer);
+    if (!readConsent() && $("cookieModal").hidden) $("consent").hidden = false;
+  }
+  if (!readConsent()) bannerTimer = setTimeout(askConsent, 20000);
+
+  function openCookieSettings() {
+    const c = readConsent() || { analytics: false, ads: false };
+    $("optAnalytics").checked = !!c.analytics;
+    $("optAds").checked = !!c.ads;
+    $("consent").hidden = true;
+    $("cookieModal").hidden = false;
+  }
+  $("consentYes").onclick = () => saveConsent({ analytics: true, ads: true });
+  $("consentNo").onclick = () => saveConsent({ analytics: false, ads: false });
+  $("consentSettings").onclick = openCookieSettings;
+  $("cookieAll").onclick = () => saveConsent({ analytics: true, ads: true });
+  $("cookieSave").onclick = () => saveConsent({ analytics: $("optAnalytics").checked, ads: $("optAds").checked });
+  $("cookieModal").addEventListener("click", (e) => {
+    if (e.target === $("cookieModal")) { $("cookieModal").hidden = true; if (!readConsent()) $("consent").hidden = false; }
+  });
+  $("cookieLink").onclick = openCookieSettings;
 
   fetch("data.json", { cache: "no-store" })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })

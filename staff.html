@@ -63,6 +63,13 @@
   .file .fn small { display: block; color: var(--muted); }
   .file input { padding: 7px 10px; font-size: .92rem; }
   .x { background: none; border: 0; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0 4px; }
+  .also { display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow-y: auto; padding: 2px; }
+  .also label {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 500; font-size: .86rem; color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; background: var(--bg);
+  }
+  .also label.on { border-color: var(--brand); background: var(--brand-soft); }
+  .also label small { color: var(--muted); }
   .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: .92rem; display: none; }
   .msg.show { display: block; }
   .msg.ok { background: var(--ok-soft); color: var(--ok); }
@@ -156,6 +163,12 @@
         </div>
         <input id="fileIn" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
         <div class="files" id="files"></div>
+      </div>
+      <div class="full" id="alsoBox" hidden>
+        <label>ใช้ไฟล์เดียวกันกับรุ่นอื่นด้วย <span class="status">(Datasheet ที่รวมหลายรุ่นไว้ในไฟล์เดียว)</span></label>
+        <div class="also" id="alsoList"></div>
+        <input id="alsoExtra" type="text" placeholder="รุ่นที่ไม่มีในรายการ พิมพ์เพิ่มได้ คั่นด้วย , เช่น SUN-6K-G05P1-EU-AM2, SUN-4K-G05P1-EU-AM2" autocomplete="off" style="margin-top:8px">
+        <div class="hint" id="alsoHint"></div>
       </div>
     </div>
     <div class="row">
@@ -252,12 +265,17 @@
     const base = await gh(repoPath() + "/git/commits/" + head);
     const tree = [];
     let i = 0;
+    const blobs = new Map(); // ไฟล์เดียวกันที่ผูกหลายรุ่น ส่งขึ้นครั้งเดียว
+    const total = new Set(changes.filter((x) => x.base64).map((x) => x.base64)).size;
     for (const c of changes) {
       if (c.del) { tree.push({ path: c.path, mode: "100644", type: "blob", sha: null }); continue; }
       if (c.sha) { tree.push({ path: c.path, mode: "100644", type: "blob", sha: c.sha }); continue; }
-      onStep(`กำลังส่งไฟล์ ${++i}/${changes.filter((x) => x.base64).length}...`);
-      const blob = await gh(repoPath() + "/git/blobs", { method: "POST", body: JSON.stringify({ content: c.base64, encoding: "base64" }) });
-      tree.push({ path: c.path, mode: "100644", type: "blob", sha: blob.sha });
+      if (!blobs.has(c.base64)) {
+        onStep(`กำลังส่งไฟล์ ${++i}/${total}...`);
+        const blob = await gh(repoPath() + "/git/blobs", { method: "POST", body: JSON.stringify({ content: c.base64, encoding: "base64" }) });
+        blobs.set(c.base64, blob.sha);
+      }
+      tree.push({ path: c.path, mode: "100644", type: "blob", sha: blobs.get(c.base64) });
     }
     onStep("กำลังบันทึก...");
     const t = await gh(repoPath() + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: base.tree.sha, tree }) });
@@ -374,6 +392,7 @@
       const has = repoBrand && Object.keys(cat[repoBrand]).some((x) => sameText(x, m));
       return `<option value="${esc(m)}" label="${has ? "✓ มี Datasheet แล้ว" : "ยังไม่มี Datasheet"}">`;
     }).join("");
+    renderAlso();
   }
 
   async function loadWarrantyModels() {
@@ -421,10 +440,64 @@
       "</div>").join("") : '<p class="empty">ครบทุกรุ่นแล้ว 🎉</p>';
     $("missing").querySelectorAll("[data-fill]").forEach((el) => el.onclick = () => {
       const [b, m] = el.dataset.fill.split("|");
-      $("brandIn").value = b; $("modelIn").value = m; fillDatalists();
+      $("brandIn").value = b; $("modelIn").value = m; fillDatalists(); renderAlso(true);
       $("brandIn").scrollIntoView({ behavior: "smooth", block: "center" });
       $("drop").focus({ preventScroll: true });
     });
+  }
+
+  // ---------- ไฟล์เดียวใช้หลายรุ่น ----------
+  let alsoChecked = new Set(); // ชื่อรุ่น (ตัวเล็ก) ที่ติ๊กไว้
+  // ชื่อซีรีส์ = ชื่อรุ่นที่ตัดตัวเลขกำลังไฟออก เช่น SUN-5K-G05P1-EU-AM2 → sun-#-g05p1-eu-am2
+  const seriesKey = (s) => {
+    const n = String(s).toLowerCase().replace(/\[[^\]]*\]/g, "").trim();
+    const k = n.replace(/\d+(\.\d+)?k/, "#");
+    return k === n ? null : k;
+  };
+
+  function alsoCandidates() {
+    const brandVal = $("brandIn").value.trim(), modelVal = $("modelIn").value.trim();
+    if (!brandVal || !modelVal) return [];
+    const cat = catalog();
+    const repoBrand = Object.keys(cat).find((x) => sameText(x, brandVal));
+    return uniqSorted([...warrantyModels(brandVal, $("catIn").value), ...(repoBrand ? Object.keys(cat[repoBrand]) : [])])
+      .filter((m) => !sameText(m, modelVal));
+  }
+
+  function renderAlso(reset = false) {
+    const ready = $("brandIn").value.trim() && $("modelIn").value.trim();
+    $("alsoBox").hidden = !ready;
+    if (!ready) return;
+    const list = alsoCandidates();
+    const key = seriesKey($("modelIn").value);
+    if (reset) alsoChecked = new Set(key ? list.filter((m) => seriesKey(m) === key).map((m) => m.toLowerCase()) : []);
+    const cat = catalog();
+    const repoBrand = Object.keys(cat).find((x) => sameText(x, $("brandIn").value));
+    $("alsoList").innerHTML = list.map((m, i) => {
+      const on = alsoChecked.has(m.toLowerCase());
+      const has = repoBrand && Object.keys(cat[repoBrand]).some((x) => sameText(x, m));
+      return `<label class="${on ? "on" : ""}"><input type="checkbox" data-i="${i}" ${on ? "checked" : ""}>${esc(m)}${has ? " <small>✓ มีไฟล์</small>" : ""}</label>`;
+    }).join("") || '<span class="hint">ยี่ห้อนี้ยังไม่มีรุ่นอื่นในรายการ — พิมพ์เพิ่มในช่องด้านล่างได้</span>';
+    $("alsoList").querySelectorAll("input").forEach((el) => el.onchange = () => {
+      const m = list[+el.dataset.i].toLowerCase();
+      el.checked ? alsoChecked.add(m) : alsoChecked.delete(m);
+      el.parentElement.classList.toggle("on", el.checked);
+      alsoHint();
+    });
+    alsoHint();
+  }
+
+  function alsoModels() {
+    const list = alsoCandidates();
+    const extra = $("alsoExtra").value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+    return [...list.filter((m) => alsoChecked.has(m.toLowerCase())), ...extra];
+  }
+
+  function alsoHint() {
+    const n = alsoModels().length;
+    $("alsoHint").textContent = n
+      ? `ไฟล์จะถูกผูกกับ ${n + 1} รุ่น (รุ่นหลัก + ${n}) — ลูกค้าค้นรุ่นไหนก็เจอไฟล์เดียวกัน`
+      : "ติ๊กรุ่นที่ใช้ Datasheet ไฟล์เดียวกัน (ระบบติ๊กรุ่นในซีรีส์เดียวกันให้อัตโนมัติ ตรวจก่อนอัปโหลด)";
   }
 
   // ---------- เลือกไฟล์ ----------
@@ -475,34 +548,51 @@
     if (!model) return msg("upMsg", "err", "กรุณาใส่รุ่น");
 
     const names = picked.map((p) => clean(p.name) || stem(p.file.name));
-    const targets = picked.map((p, i) => `${ROOT_DIR}/${brand}/${model}/${names[i]}${ext(p.file.name)}`);
-    if (new Set(targets).size !== targets.length) return msg("upMsg", "err", "ชื่อเอกสารซ้ำกัน กรุณาตั้งชื่อให้ไม่ซ้ำ");
+    if (new Set(names.map((n, i) => n.toLowerCase() + ext(picked[i].file.name))).size !== names.length)
+      return msg("upMsg", "err", "ชื่อเอกสารซ้ำกัน กรุณาตั้งชื่อให้ไม่ซ้ำ");
+
+    // รุ่นหลัก + รุ่นที่ใช้ไฟล์ร่วมกัน (ตัดชื่อซ้ำ และใช้ชื่อที่มีอยู่แล้วในระบบ)
+    const models = [];
+    for (const raw of [model, ...alsoModels()]) {
+      const m = Object.keys(cat[brand] || {}).find((x) => sameText(x, raw)) || clean(raw);
+      if (m && !models.some((x) => sameText(x, m))) models.push(m);
+    }
 
     const changes = [];
-    // รุ่นที่เคยเก็บแบบไฟล์เดี่ยว (datasheets/ยี่ห้อ/รุ่น.pdf) → ย้ายเข้าโฟลเดอร์รุ่น เพื่อไม่ให้รุ่นซ้ำ 2 อัน
-    const single = paths.find((p) => p.split("/").length === 3 && p.startsWith(`${ROOT_DIR}/${brand}/`) && stem(p.split("/")[2]) === model);
-    const replaced = targets.filter((t) => paths.includes(t) ||
-      (single && t === `${ROOT_DIR}/${brand}/${model}/Datasheet${ext(single)}`));
-    if (replaced.length && !confirm(`มีไฟล์ชื่อนี้อยู่แล้ว จะถูกแทนที่ด้วยไฟล์ใหม่:\n${replaced.map((t) => "• " + t.split("/").pop()).join("\n")}\n\nดำเนินการต่อ?`)) return;
+    const replaced = [];
+    const fileTargets = picked.map(() => []);
+    for (const m of models) {
+      const targets = picked.map((p, i) => `${ROOT_DIR}/${brand}/${m}/${names[i]}${ext(p.file.name)}`);
+      targets.forEach((t, i) => fileTargets[i].push(t));
+      // รุ่นที่เคยเก็บแบบไฟล์เดี่ยว (datasheets/ยี่ห้อ/รุ่น.pdf) → ย้ายเข้าโฟลเดอร์รุ่น เพื่อไม่ให้รุ่นซ้ำ 2 อัน
+      const single = paths.find((p) => p.split("/").length === 3 && p.startsWith(`${ROOT_DIR}/${brand}/`) && stem(p.split("/")[2]) === m);
+      if (single) {
+        const newPath = `${ROOT_DIR}/${brand}/${m}/Datasheet${ext(single)}`;
+        if (targets.includes(newPath)) replaced.push(newPath);
+        else changes.push({ path: newPath, sha: shas[single] });
+        changes.push({ path: single, del: true });
+      }
+      replaced.push(...targets.filter((t) => paths.includes(t)));
+    }
+    if (replaced.length && !confirm(`มีไฟล์ชื่อนี้อยู่แล้ว จะถูกแทนที่ด้วยไฟล์ใหม่:\n${replaced.map((t) => "• " + t.split("/").slice(2).join(" / ")).join("\n")}\n\nดำเนินการต่อ?`)) return;
 
     $("uploadBtn").disabled = true;
     try {
-      if (single) {
-        $("upStatus").textContent = "กำลังจัดโฟลเดอร์รุ่นเดิม...";
-        const newPath = `${ROOT_DIR}/${brand}/${model}/Datasheet${ext(single)}`;
-        if (!targets.includes(newPath)) changes.push({ path: newPath, sha: shas[single] });
-        changes.push({ path: single, del: true });
-      }
       for (let i = 0; i < picked.length; i++) {
         $("upStatus").textContent = `กำลังอ่านไฟล์ ${i + 1}/${picked.length}...`;
-        changes.push({ path: targets[i], base64: await readBase64(picked[i].file) });
+        const base64 = await readBase64(picked[i].file);
+        // ไฟล์เดียวกันส่งขึ้นครั้งเดียว แล้วผูกเข้าทุกรุ่น (ไม่กินพื้นที่ซ้ำใน repo)
+        fileTargets[i].forEach((path) => changes.push({ path, base64 }));
       }
-      await commit(changes, `อัปโหลด ${brand} ${model} (${picked.length} ไฟล์)`, (s) => $("upStatus").textContent = s);
+      const label = models.length > 1 ? `${models[0]} + อีก ${models.length - 1} รุ่น` : models[0];
+      await commit(changes, `อัปโหลด ${brand} ${label} (${picked.length} ไฟล์)`, (s) => $("upStatus").textContent = s);
       const site = siteUrl();
-      msg("upMsg", "ok", `✅ อัปโหลด <b>${esc(brand)} ${esc(model)}</b> แล้ว หน้าลูกค้าจะอัปเดตใน 1–2 นาที` +
-        (site ? ` · <a href="${esc(site)}#${encodeURIComponent(brand)}/${encodeURIComponent(model)}" target="_blank" rel="noopener">เปิดหน้ารุ่นนี้</a>` : "") +
+      msg("upMsg", "ok", `✅ อัปโหลด <b>${esc(brand)} ${esc(models[0])}</b>` +
+        (models.length > 1 ? ` และใช้ไฟล์เดียวกันกับอีก ${models.length - 1} รุ่น (${models.slice(1).map(esc).join(", ")})` : "") +
+        ` แล้ว หน้าลูกค้าจะอัปเดตใน 1–2 นาที` +
+        (site ? ` · <a href="${esc(site)}#${encodeURIComponent(brand)}/${encodeURIComponent(models[0])}" target="_blank" rel="noopener">เปิดหน้ารุ่นนี้</a>` : "") +
         ` · <a href="https://github.com/${esc(cfg.repo)}/actions" target="_blank" rel="noopener">ดูสถานะ</a>`);
-      picked = []; renderPicked(); $("modelIn").value = "";
+      picked = []; renderPicked(); $("modelIn").value = ""; $("alsoExtra").value = ""; renderAlso(true);
       loadList();
     } catch (e) {
       msg("upMsg", "err", esc(e.message));
@@ -549,7 +639,9 @@
     msg("cfgMsg", "ok", "ลบรหัสออกจากเครื่องนี้แล้ว");
   };
 
-  $("brandIn").oninput = fillDatalists;
+  $("brandIn").oninput = () => { fillDatalists(); renderAlso(true); };
+  $("modelIn").oninput = () => renderAlso(true);
+  $("alsoExtra").oninput = alsoHint;
   $("catIn").onchange = () => { fillDatalists(); renderMissing(); };
   loadWarrantyModels();
   $("filter").oninput = renderList;

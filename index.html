@@ -171,7 +171,11 @@
   }
   .consent p { margin: 0; flex: 1 1 320px; color: var(--muted); }
   .consent p b { color: var(--text); }
-  .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--brand); text-decoration: underline; cursor: pointer; }
+  .linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  main { flex: 1 0 auto; width: 100%; }
+  .site-foot { text-align: center; color: var(--muted); font-size: .78rem; padding: 14px 16px 18px; opacity: .8; }
+  .site-foot a { color: inherit; }
   .modal-bg { position: fixed; inset: 0; background: rgba(10,15,30,.55); z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .modal { background: var(--card); color: var(--text); border-radius: 16px; max-width: 480px; width: 100%; padding: 20px; max-height: 90vh; overflow-y: auto; }
   .modal h3 { margin: 0 0 6px; font-size: 1.15rem; }
@@ -248,8 +252,11 @@
   </section>
 
   <p class="stats" id="stats"></p>
-  <p class="stats"><button class="linklike" type="button" id="cookieLink">ตั้งค่าคุกกี้</button></p>
 </main>
+
+<footer class="site-foot">
+  © SolarCellDIY · <a href="https://www.scdpower.com/" id="footHome">scdpower.com</a> · <button class="linklike" type="button" id="cookieLink">ตั้งค่าคุกกี้</button>
+</footer>
 
 <div class="toast" id="toast"></div>
 
@@ -338,7 +345,7 @@
   $("ctaLine").addEventListener("click", () => track("generate_lead", { ...currentItem(), method: "line", placement: "model_page" }));
   $("lineShareBtn").addEventListener("click", () => track("share", { ...currentItem(), method: "line", content_type: "datasheet" }));
   if (CONFIG.homeUrl) {
-    for (const id of ["homeBtn", "ctaHome"]) { $(id).href = CONFIG.homeUrl; $(id).hidden = false; $(id).onclick = goHome; }
+    for (const id of ["homeBtn", "ctaHome", "footHome"]) { $(id).href = CONFIG.homeUrl; $(id).hidden = false; $(id).onclick = goHome; }
   }
   // ลิงก์แชร์รุ่นปัจจุบัน — ติด UTM ไว้ คนที่เปิดจากลิงก์นี้ GA4 จะนับเป็น "มาจากการแชร์" (source = datasheet_share)
   const shareUrl = () => location.origin + location.pathname +
@@ -409,7 +416,6 @@
     if (lastViewed !== b.name + "/" + m.name) {
       lastViewed = b.name + "/" + m.name;
       track("view_datasheet", item(b.name, m.name));
-      setTimeout(askConsent, 1500); // ถามหลังลูกค้าได้เห็นเนื้อหาแล้ว
     }
     $("cta").hidden = !CONFIG.lineUrl && !CONFIG.homeUrl;
     if (updateHash) history.replaceState(null, "", location.search + "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
@@ -476,7 +482,7 @@
 
   // ---------- แบนเนอร์คุกกี้ (PDPA) ----------
   // ยอมรับ / ปฏิเสธ กดครั้งเดียวจบ ส่วน "ตั้งค่า" เป็นทางเลือกสำหรับคนที่อยากเลือกเอง
-  // แบนเนอร์โผล่หลังลูกค้าเปิดดูรุ่นแรก (หรือหลัง 20 วินาที) — ไม่บังเนื้อหา ใช้เว็บได้ตลอด
+  // แบนเนอร์โผล่ตั้งแต่เปิดเว็บครั้งแรก — ไม่บังเนื้อหา ใช้เว็บได้ตลอด
   function saveConsent(c) {
     try { localStorage.setItem("cookie-consent", JSON.stringify(c)); } catch (e) {}
     applyConsent(c);
@@ -488,7 +494,7 @@
     clearTimeout(bannerTimer);
     if (!readConsent() && $("cookieModal").hidden) $("consent").hidden = false;
   }
-  if (!readConsent()) bannerTimer = setTimeout(askConsent, 20000);
+  askConsent();
 
   function openCookieSettings() {
     const c = readConsent() || { analytics: false, ads: false };

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datasheet สินค้า</title>
+<meta name="description" content="เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลด Datasheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --text: #172033;
+    --muted: #5d6b82;
+    --line: #dde3ec;
+    --brand: #1b3a6b;
+    --brand-soft: #e7eef9;
+    --accent: #f2a900;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1522;
+      --card: #182133;
+      --text: #e8edf5;
+      --muted: #9aa8bf;
+      --line: #2a3650;
+      --brand: #7fa7e8;
+      --brand-soft: #1f2d47;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    background: #1b3a6b;
+    color: #fff;
+    padding: 22px 16px 26px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+  header .wrap { padding: 0; }
+  header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: .95rem; }
+  .header-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .line-btn {
+    background: #06c755; color: #fff; text-decoration: none;
+    padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: .9rem;
+  }
+  main { padding: 20px 0 48px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .picker .full { grid-column: 1 / -1; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; color: var(--muted); }
+  select, input[type=search] {
+    width: 100%;
+    font: inherit;
+    font-size: 1rem;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+  }
+  select:disabled { opacity: .55; }
+  select:focus, input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .results { margin-top: 10px; display: none; }
+  .results.show { display: block; }
+  .results button {
+    display: flex; justify-content: space-between; gap: 10px; width: 100%;
+    text-align: left; font: inherit; background: none; border: 0; color: var(--text);
+    padding: 10px 8px; border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .results button:hover { background: var(--brand-soft); }
+  .results small { color: var(--muted); }
+  .empty { color: var(--muted); padding: 10px 8px; }
+  #detail { margin-top: 18px; display: none; }
+  #detail.show { display: block; }
+  .detail-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .detail-head h2 { margin: 0; font-size: 1.3rem; }
+  .detail-head .brand { color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .doc {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 12px;
+  }
+  .doc .name { font-weight: 600; word-break: break-word; }
+  .doc .meta { color: var(--muted); font-size: .85rem; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; font: inherit; font-size: .92rem; font-weight: 600;
+    padding: 8px 14px; border-radius: 9px; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--brand); background: var(--brand); color: #fff;
+  }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f1522; } }
+  .btn.ghost { background: transparent; color: var(--brand); }
+  .viewer { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: none; }
+  .viewer.show { display: block; }
+  .viewer iframe { width: 100%; height: 78vh; border: 0; display: block; background: #fff; }
+  .viewer img { width: 100%; display: block; }
+  .stats { color: var(--muted); font-size: .85rem; margin-top: 14px; text-align: center; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #172033; color: #fff; padding: 10px 16px; border-radius: 999px;
+    font-size: .9rem; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  @media (max-width: 600px) {
+    .picker { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap header-row">
+    <div>
+      <h1 id="siteName">Datasheet สินค้า</h1>
+      <p>เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลดเอกสาร</p>
+    </div>
+    <a id="lineBtn" class="line-btn" target="_blank" rel="noopener" hidden>สอบถามทาง LINE</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <div class="picker">
+      <div class="full">
+        <label for="search">ค้นหาด่วน</label>
+        <input id="search" type="search" placeholder="พิมพ์ชื่อรุ่น เช่น AEP4860, 6kW, SPF..." autocomplete="off">
+        <div id="results" class="results"></div>
+      </div>
+      <div>
+        <label for="brand">1. เลือกยี่ห้อ</label>
+        <select id="brand"><option value="">กำลังโหลด...</option></select>
+      </div>
+      <div>
+        <label for="model">2. เลือกโมเดล</label>
+        <select id="model" disabled><option value="">— เลือกยี่ห้อก่อน —</option></select>
+      </div>
+    </div>
+  </section>
+
+  <section id="detail" class="card">
+    <div class="detail-head">
+      <div>
+        <div class="brand" id="dBrand"></div>
+        <h2 id="dModel"></h2>
+      </div>
+      <button class="btn ghost" id="shareBtn" type="button">คัดลอกลิงก์รุ่นนี้</button>
+    </div>
+    <div id="docs"></div>
+    <div class="viewer" id="viewer"></div>
+  </section>
+
+  <p class="stats" id="stats"></p>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===== ตั้งค่าร้าน (แก้ตรงนี้ได้) =====
+  const CONFIG = {
+    siteName: "Datasheet สินค้า",   // ชื่อที่แสดงบนหัวเว็บ
+    lineUrl: ""                      // ลิงก์ LINE ร้าน เช่น "https://lin.ee/xxxx" (เว้นว่าง = ไม่แสดงปุ่ม)
+  };
+  // ====================================
+
+  const $ = (id) => document.getElementById(id);
+  const brandSel = $("brand"), modelSel = $("model"), search = $("search"), results = $("results");
+  let DATA = { brands: [] };
+
+  document.title = CONFIG.siteName;
+  $("siteName").textContent = CONFIG.siteName;
+  if (CONFIG.lineUrl) { $("lineBtn").href = CONFIG.lineUrl; $("lineBtn").hidden = false; }
+
+  const fileUrl = (path) => path.split("/").map(encodeURIComponent).join("/");
+  const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+  const isImage = (p) => /\.(jpe?g|png|webp)$/i.test(p);
+  const canEmbedPdf = () => navigator.pdfViewerEnabled !== false && window.innerWidth >= 768;
+  const findBrand = (name) => DATA.brands.find((b) => b.name === name);
+
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 1800);
+  }
+
+  function fillBrands() {
+    brandSel.innerHTML = '<option value="">— เลือกยี่ห้อ —</option>' +
+      DATA.brands.map((b) => `<option>${esc(b.name)}</option>`).join("");
+    const models = DATA.brands.reduce((n, b) => n + b.models.length, 0);
+    $("stats").textContent = DATA.brands.length
+      ? `มีทั้งหมด ${DATA.brands.length} ยี่ห้อ ${models} รุ่น` + (DATA.updated ? ` · อัปเดต ${new Date(DATA.updated).toLocaleDateString("th-TH")}` : "")
+      : "ยังไม่มีไฟล์ในระบบ";
+  }
+
+  function fillModels(brandName) {
+    const b = findBrand(brandName);
+    modelSel.disabled = !b;
+    modelSel.innerHTML = b
+      ? '<option value="">— เลือกโมเดล —</option>' + b.models.map((m) => `<option>${esc(m.name)}</option>`).join("")
+      : '<option value="">— เลือกยี่ห้อก่อน —</option>';
+  }
+
+  function show(brandName, modelName, updateHash = true) {
+    const b = findBrand(brandName);
+    const m = b && b.models.find((x) => x.name === modelName);
+    const detail = $("detail");
+    if (!m) { detail.classList.remove("show"); return; }
+
+    brandSel.value = b.name; fillModels(b.name); modelSel.value = m.name;
+    $("dBrand").textContent = b.name;
+    $("dModel").textContent = m.name;
+    $("viewer").classList.remove("show");
+    $("viewer").innerHTML = "";
+
+    $("docs").innerHTML = m.docs.map((d, i) => `
+      <div class="doc">
+        <div>
+          <div class="name">${esc(d.name)}</div>
+          <div class="meta">${d.path.split(".").pop().toUpperCase()} · ${fmtSize(d.size)}</div>
+        </div>
+        <div class="btns">
+          <button class="btn" type="button" data-view="${i}">เปิดดู</button>
+          <a class="btn ghost" href="${fileUrl(d.path)}" download>ดาวน์โหลด</a>
+        </div>
+      </div>`).join("");
+
+    $("docs").querySelectorAll("[data-view]").forEach((btn) => {
+      btn.onclick = () => openDoc(m.docs[+btn.dataset.view]);
+    });
+    if (m.docs.length === 1 && canEmbedPdf()) openDoc(m.docs[0]);
+
+    detail.classList.add("show");
+    if (updateHash) history.replaceState(null, "", "#" + encodeURIComponent(b.name) + "/" + encodeURIComponent(m.name));
+  }
+
+  function openDoc(d) {
+    const url = fileUrl(d.path);
+    const v = $("viewer");
+    if (isImage(d.path)) {
+      v.innerHTML = `<img src="${url}" alt="${esc(d.name)}">`;
+    } else if (canEmbedPdf()) {
+      v.innerHTML = `<iframe src="${url}" title="${esc(d.name)}"></iframe>`;
+    } else {
+      window.open(url, "_blank");   // มือถือ: เปิดไฟล์ในแท็บใหม่
+      return;
+    }
+    v.classList.add("show");
+    v.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function runSearch() {
+    const norm = (s) => s.toLowerCase().replace(/[\s\-_.\/()]+/g, "");
+    const q = norm(search.value);
+    if (!q) { results.classList.remove("show"); return; }
+    const hits = [];
+    for (const b of DATA.brands) for (const m of b.models) {
+      const hay = norm(b.name + m.name + m.docs.map((d) => d.name).join(""));
+      if (hay.includes(q)) hits.push([b.name, m.name]);
+    }
+    results.innerHTML = hits.length
+      ? hits.slice(0, 30).map(([b, m]) => `<button type="button" data-b="${esc(b)}" data-m="${esc(m)}"><span>${esc(m)}</span><small>${esc(b)}</small></button>`).join("")
+      : '<div class="empty">ไม่พบรุ่นที่ค้นหา</div>';
+    results.classList.add("show");
+    results.querySelectorAll("button").forEach((el) => {
+      el.onclick = () => { show(el.dataset.b, el.dataset.m); results.classList.remove("show"); search.value = ""; };
+    });
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function fromHash() {
+    const [b, m] = location.hash.slice(1).split("/").map((s) => decodeURIComponent(s || ""));
+    if (b && m) show(b, m, false);
+  }
+
+  brandSel.onchange = () => { fillModels(brandSel.value); $("detail").classList.remove("show"); history.replaceState(null, "", location.pathname); };
+  modelSel.onchange = () => show(brandSel.value, modelSel.value);
+  search.oninput = runSearch;
+  window.addEventListener("hashchange", fromHash);
+  $("shareBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast("คัดลอกลิงก์แล้ว ส่งให้ลูกค้าได้เลย"); }
+    catch { prompt("คัดลอกลิงก์นี้:", location.href); }
+  };
+
+  fetch("data.json", { cache: "no-store" })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((d) => { DATA = d; fillBrands(); fromHash(); })
+    .catch(() => {
+      brandSel.innerHTML = '<option value="">โหลดรายการไม่สำเร็จ</option>';
+      $("stats").textContent = "ไม่พบไฟล์ data.json — รอระบบอัปเดตสักครู่แล้วลองรีเฟรช";
+    });
+</script>
+</body>
+</html>

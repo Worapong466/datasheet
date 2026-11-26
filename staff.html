@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>จัดการ Datasheet (พนักงาน)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #ffffff; --text: #172033; --muted: #5d6b82; --line: #dde3ec;
+    --brand: #1b3a6b; --brand-soft: #e7eef9; --ok: #12805c; --ok-soft: #e3f5ed;
+    --err: #b42318; --err-soft: #fdecea; --warn-soft: #fff6dc; --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1522; --card: #182133; --text: #e8edf5; --muted: #9aa8bf; --line: #2a3650;
+      --brand: #7fa7e8; --brand-soft: #1f2d47; --ok: #5fd3a5; --ok-soft: #173329;
+      --err: #ff8a80; --err-soft: #3a1c1c; --warn-soft: #3a3014;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: "IBM Plex Sans Thai", system-ui, sans-serif; line-height: 1.55; }
+  header { background: #1b3a6b; color: #fff; padding: 20px 16px 22px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  header .wrap { padding: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 1.35rem; }
+  header p { margin: 2px 0 0; opacity: .85; font-size: .9rem; }
+  .badge { background: #f2a900; color: #1b1b1b; font-weight: 700; font-size: .78rem; padding: 3px 10px; border-radius: 999px; }
+  main { padding: 20px 0 60px; display: grid; gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .full { grid-column: 1 / -1; }
+  label { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 6px; color: var(--muted); }
+  input[type=text], input[type=password], input[type=search], select {
+    width: 100%; font: inherit; font-size: 1rem; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .hint { color: var(--muted); font-size: .82rem; margin-top: 4px; }
+  .btn {
+    font: inherit; font-size: .95rem; font-weight: 600; padding: 9px 16px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--brand); background: var(--brand); color: #fff; text-decoration: none; display: inline-block;
+  }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f1522; } }
+  .btn.ghost { background: transparent; color: var(--brand); }
+  .btn.danger { background: transparent; color: var(--err); border-color: var(--err); padding: 4px 10px; font-size: .82rem; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .drop {
+    border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; color: var(--muted);
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--brand); background: var(--brand-soft); }
+  .drop strong { color: var(--brand); }
+  .files { margin-top: 10px; display: grid; gap: 8px; }
+  .file { display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .file .fn { font-size: .85rem; word-break: break-all; }
+  .file .fn small { display: block; color: var(--muted); }
+  .file input { padding: 7px 10px; font-size: .92rem; }
+  .x { background: none; border: 0; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 0 4px; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: .92rem; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { background: var(--ok-soft); color: var(--ok); }
+  .msg.err { background: var(--err-soft); color: var(--err); }
+  .msg.info { background: var(--warn-soft); color: var(--text); }
+  .msg a { color: inherit; font-weight: 600; }
+  .status { font-size: .85rem; color: var(--muted); }
+  .status b.on { color: var(--ok); } .status b.off { color: var(--err); }
+  details summary { cursor: pointer; font-weight: 600; }
+  .brand-block { border-top: 1px solid var(--line); padding: 10px 0; }
+  .brand-block:first-child { border-top: 0; }
+  .brand-name { font-weight: 700; color: var(--brand); }
+  .model { margin: 8px 0 0 10px; }
+  .model-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .model-head b { font-weight: 600; }
+  .doc-line { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin: 4px 0 0 14px; font-size: .88rem; color: var(--muted); }
+  .doc-line a { color: var(--text); }
+  .empty { color: var(--muted); }
+  @media (max-width: 640px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .file { grid-template-columns: 1fr auto; }
+    .file input { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div>
+      <h1>จัดการ Datasheet</h1>
+      <p>อัปโหลดรุ่นใหม่ / ลบไฟล์ — หน้าลูกค้าอัปเดตเองใน 1–2 นาที</p>
+    </div>
+    <span class="badge">สำหรับพนักงาน</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ตั้งค่าการเชื่อมต่อ -->
+  <section class="card">
+    <details id="setupBox">
+      <summary>ตั้งค่าการเชื่อมต่อ <span class="status" id="connStatus"></span></summary>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label for="repo">Repo (ชื่อบัญชี/ชื่อ repo)</label>
+          <input id="repo" type="text" placeholder="เช่น solarcelldiy/datasheet" autocomplete="off">
+        </div>
+        <div>
+          <label for="branch">Branch</label>
+          <input id="branch" type="text" value="main" autocomplete="off">
+        </div>
+        <div class="full">
+          <label for="token">รหัสเข้าใช้ (GitHub Token)</label>
+          <input id="token" type="password" placeholder="github_pat_..." autocomplete="off">
+          <div class="hint">เจ้าของร้านเป็นคนให้รหัสนี้ ระบบจะจำไว้ในเครื่องนี้เครื่องเดียว ถ้าใช้คอมส่วนกลาง ให้กด "ลืมรหัสในเครื่องนี้" หลังใช้งานเสร็จ</div>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="saveCfg" type="button">บันทึกและทดสอบ</button>
+        <button class="btn ghost" id="forget" type="button">ลืมรหัสในเครื่องนี้</button>
+      </div>
+      <div class="msg" id="cfgMsg"></div>
+    </details>
+  </section>
+
+  <!-- อัปโหลด -->
+  <section class="card">
+    <h2>เพิ่ม / อัปเดตรุ่น</h2>
+    <div class="grid2">
+      <div class="full">
+        <label for="catIn">ประเภทสินค้า</label>
+        <select id="catIn"><option value="">ทุกประเภท</option></select>
+        <div class="hint" id="warrantyStatus">กำลังดึงรายการรุ่นจากระบบรับประกัน...</div>
+      </div>
+      <div>
+        <label for="brandIn">ยี่ห้อ</label>
+        <input id="brandIn" type="text" list="brandList" placeholder="เช่น SRNE, Growatt, Deye" autocomplete="off">
+        <datalist id="brandList"></datalist>
+        <div class="hint">เลือกจากรายการ หรือพิมพ์ชื่อใหม่เพื่อเพิ่มยี่ห้อ</div>
+      </div>
+      <div>
+        <label for="modelIn">รุ่น / โมเดล</label>
+        <input id="modelIn" type="text" list="modelList" placeholder="เช่น AEP4860S135-H" autocomplete="off">
+        <datalist id="modelList"></datalist>
+        <div class="hint">ถ้าเลือกรุ่นที่มีอยู่ ไฟล์จะถูกเพิ่มเข้าไปในรุ่นนั้น</div>
+      </div>
+      <div class="full">
+        <label>ไฟล์ (PDF / JPG / PNG / WEBP)</label>
+        <div class="drop" id="drop" tabindex="0" role="button">
+          ลากไฟล์มาวางที่นี่ หรือ <strong>กดเพื่อเลือกไฟล์</strong><br>
+          <small>เลือกได้หลายไฟล์ เช่น Datasheet + คู่มือติดตั้ง · ไม่เกินไฟล์ละ 50 MB</small>
+        </div>
+        <input id="fileIn" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
+        <div class="files" id="files"></div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="uploadBtn" type="button" disabled>อัปโหลดขึ้นเว็บ</button>
+      <span class="status" id="upStatus"></span>
+    </div>
+    <div class="msg" id="upMsg"></div>
+  </section>
+
+  <!-- รายการที่มีอยู่ -->
+  <section class="card">
+    <div class="model-head">
+      <h2 style="margin:0">รุ่นที่มีในระบบ</h2>
+      <div class="row" style="margin:0">
+        <input id="filter" type="search" placeholder="ค้นหารุ่น..." style="width:180px">
+        <button class="btn ghost" id="reload" type="button">รีเฟรช</button>
+      </div>
+    </div>
+    <div id="list" style="margin-top:12px"><p class="empty">ตั้งค่าการเชื่อมต่อก่อน แล้วรายการจะขึ้นที่นี่</p></div>
+    <div class="msg" id="listMsg"></div>
+  </section>
+
+  <!-- รุ่นที่ขายอยู่ (จากระบบรับประกัน) แต่ยังไม่มี Datasheet -->
+  <section class="card" id="missingCard" hidden>
+    <details>
+      <summary id="missingTitle">รุ่นที่ยังไม่มี Datasheet</summary>
+      <div class="hint" style="margin:6px 0 4px">รายการจากชีต Models ของระบบรับประกัน กด "อัปโหลด" เพื่อกรอกยี่ห้อกับรุ่นให้อัตโนมัติ</div>
+      <div id="missing"></div>
+    </details>
+  </section>
+</main>
+
+<script>
+  const ROOT_DIR = "datasheets";
+  const ALLOWED = /\.(pdf|jpe?g|png|webp)$/i;
+  const MAX_MB = 50;
+  const API = "https://api.github.com";
+  const KEY = "datasheet-staff-cfg";
+  // รายการ ประเภท/ยี่ห้อ/รุ่น จากระบบรับประกัน (ชีต "Models" — Apps Script ตัวเดียวกับ warranty.html)
+  const WARRANTY_MODELS_URL = "https://script.google.com/macros/s/AKfycbyAHN_FYWKI2m_Co566TKd86qAp5Yd3J2Ftv8sCaCDogp8Ls-B7YWQ-ET-Cop69WaU/exec?mode=models";
+  let warranty = {};  // { ประเภท: { ยี่ห้อ: [รุ่น, ...] } }
+  let repoLoaded = false;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+  const ext = (n) => (n.match(/\.[^.]+$/) || [""])[0].toLowerCase();
+  const stem = (n) => n.replace(/\.[^.]+$/, "");
+  // ชื่อโฟลเดอร์/ไฟล์: ห้ามมี / \ และอักขระที่ใช้ไม่ได้ในชื่อไฟล์
+  const clean = (s) => s.replace(/[\/\\:*?"<>|#%]+/g, "-").replace(/\s+/g, " ").trim().replace(/^\.+/, "");
+
+  let cfg = { repo: "", branch: "main", token: "" };
+  let paths = [];   // ไฟล์ทั้งหมดใต้ datasheets/ ใน repo
+  let shas = {};    // path -> blob sha
+  let picked = [];  // [{file, name}]
+
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
+  $("repo").value = cfg.repo; $("branch").value = cfg.branch || "main"; $("token").value = cfg.token;
+
+  function msg(id, type, html) {
+    const el = $(id); el.className = "msg show " + type; el.innerHTML = html;
+  }
+  function hideMsg(id) { $(id).className = "msg"; }
+
+  async function gh(path, opts = {}) {
+    const headers = {
+      Authorization: "Bearer " + cfg.token,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (opts.body) headers["Content-Type"] = "application/json";
+    const r = await fetch(API + path, { ...opts, headers });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      const reason = {
+        401: "รหัสเข้าใช้ไม่ถูกต้องหรือหมดอายุ",
+        403: "รหัสนี้ไม่มีสิทธิ์เขียนไฟล์ (ต้องตั้ง Contents: Read and write)",
+        404: "ไม่พบ repo หรือ branch — ตรวจชื่อ repo / branch อีกครั้ง",
+        409: "repo ยังว่างอยู่ ต้องมีไฟล์อย่างน้อย 1 ไฟล์ก่อน",
+        422: "มีการแก้ไขพร้อมกัน ลองกดอีกครั้ง",
+      }[r.status];
+      throw new Error((reason || "เกิดข้อผิดพลาด") + ` (${r.status}${j.message ? ": " + j.message : ""})`);
+    }
+    return r.status === 204 ? null : r.json();
+  }
+  const repoPath = () => "/repos/" + cfg.repo.split("/").map(encodeURIComponent).join("/");
+  const refPath = () => repoPath() + "/git/ref/heads/" + encodeURIComponent(cfg.branch);
+
+  // รวมการเปลี่ยนแปลงทั้งหมดเป็น 1 commit (เว็บ build ครั้งเดียว)
+  // changes: [{ path, base64 }] สำหรับเพิ่ม/แทนที่, [{ path, del: true }] สำหรับลบ
+  async function commit(changes, message, onStep = () => {}) {
+    const ref = await gh(refPath());
+    const head = ref.object.sha;
+    const base = await gh(repoPath() + "/git/commits/" + head);
+    const tree = [];
+    let i = 0;
+    for (const c of changes) {
+      if (c.del) { tree.push({ path: c.path, mode: "100644", type: "blob", sha: null }); continue; }
+      if (c.sha) { tree.push({ path: c.path, mode: "100644", type: "blob", sha: c.sha }); continue; }
+      onStep(`กำลังส่งไฟล์ ${++i}/${changes.filter((x) => x.base64).length}...`);
+      const blob = await gh(repoPath() + "/git/blobs", { method: "POST", body: JSON.stringify({ content: c.base64, encoding: "base64" }) });
+      tree.push({ path: c.path, mode: "100644", type: "blob", sha: blob.sha });
+    }
+    onStep("กำลังบันทึก...");
+    const t = await gh(repoPath() + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: base.tree.sha, tree }) });
+    const nc = await gh(repoPath() + "/git/commits", { method: "POST", body: JSON.stringify({ message, tree: t.sha, parents: [head] }) });
+    await gh(repoPath() + "/git/refs/heads/" + encodeURIComponent(cfg.branch), { method: "PATCH", body: JSON.stringify({ sha: nc.sha }) });
+  }
+
+  function readBase64(file) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(",")[1]);
+      fr.onerror = () => rej(fr.error);
+      fr.readAsDataURL(file);
+    });
+  }
+
+  // ---------- โครงสร้างข้อมูลจาก paths ----------
+  function catalog() {
+    const brands = {};
+    for (const p of paths) {
+      const parts = p.split("/").slice(1); // ตัด datasheets/
+      if (parts.length < 2 || !ALLOWED.test(p)) continue;
+      const brand = parts[0];
+      const model = parts.length === 2 ? stem(parts[1]) : parts[1];
+      const docName = parts.length === 2 ? "Datasheet" : stem(parts.slice(2).join("/"));
+      ((brands[brand] ||= {})[model] ||= []).push({ path: p, name: docName });
+    }
+    return brands;
+  }
+
+  async function loadList() {
+    if (!cfg.repo || !cfg.token) return;
+    hideMsg("listMsg");
+    $("list").innerHTML = '<p class="empty">กำลังโหลด...</p>';
+    try {
+      const ref = await gh(refPath());
+      const tree = await gh(repoPath() + "/git/trees/" + ref.object.sha + "?recursive=1");
+      const entries = tree.tree.filter((e) => e.type === "blob" && e.path.startsWith(ROOT_DIR + "/"));
+      paths = entries.map((e) => e.path);
+      shas = Object.fromEntries(entries.map((e) => [e.path, e.sha]));
+      repoLoaded = true;
+      renderList(); fillDatalists(); renderMissing();
+    } catch (e) {
+      $("list").innerHTML = "";
+      msg("listMsg", "err", esc(e.message));
+    }
+  }
+
+  const coll = new Intl.Collator("th", { numeric: true, sensitivity: "base" });
+
+  function renderList() {
+    const cat = catalog();
+    const q = $("filter").value.trim().toLowerCase();
+    const brands = Object.keys(cat).sort(coll.compare);
+    const html = brands.map((b) => {
+      const models = Object.keys(cat[b]).sort(coll.compare)
+        .filter((m) => !q || (b + " " + m).toLowerCase().includes(q));
+      if (!models.length) return "";
+      return `<div class="brand-block"><div class="brand-name">${esc(b)} <small class="status">(${models.length} รุ่น)</small></div>` +
+        models.map((m) => `
+          <div class="model">
+            <div class="model-head"><b>${esc(m)}</b>
+              <button class="btn danger" data-del-model="${esc(b)}|${esc(m)}" type="button">ลบทั้งรุ่น</button></div>
+            ${cat[b][m].map((d) => `<div class="doc-line"><span>📄 ${esc(d.name)}</span>
+              <button class="btn danger" data-del="${esc(d.path)}" type="button">ลบ</button></div>`).join("")}
+          </div>`).join("") + "</div>";
+    }).join("");
+    $("list").innerHTML = html || `<p class="empty">${paths.length ? "ไม่พบรุ่นที่ค้นหา" : "ยังไม่มีไฟล์ในระบบ — เริ่มอัปโหลดรุ่นแรกได้เลย"}</p>`;
+
+    $("list").querySelectorAll("[data-del]").forEach((el) => el.onclick = () => removeFiles([el.dataset.del], "ลบไฟล์ " + el.dataset.del.split("/").pop()));
+    $("list").querySelectorAll("[data-del-model]").forEach((el) => el.onclick = () => {
+      const [b, m] = el.dataset.delModel.split("|");
+      removeFiles(cat[b][m].map((d) => d.path), `ลบรุ่น ${b} ${m} ทั้งหมด`);
+    });
+  }
+
+  async function removeFiles(list, label) {
+    if (!confirm(`${label}\n(${list.length} ไฟล์)\n\nลูกค้าจะดาวน์โหลดไม่ได้อีก ยืนยันลบ?`)) return;
+    msg("listMsg", "info", "กำลังลบ...");
+    try {
+      await commit(list.map((path) => ({ path, del: true })), label);
+      msg("listMsg", "ok", `ลบแล้ว — หน้าลูกค้าจะอัปเดตใน 1–2 นาที`);
+      loadList();
+    } catch (e) { msg("listMsg", "err", esc(e.message)); }
+  }
+
+  const uniqSorted = (arr) => {
+    const seen = new Map();
+    for (const s of arr) if (s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
+    return [...seen.values()].sort(coll.compare);
+  };
+  const sameText = (a, b) => clean(a).toLowerCase() === clean(b).toLowerCase();
+
+  // ยี่ห้อ/รุ่นจากระบบรับประกัน ตามประเภทที่เลือก
+  function warrantyBrands(catName) {
+    const cats = catName ? [catName] : Object.keys(warranty);
+    return cats.flatMap((c) => Object.keys(warranty[c] || {}));
+  }
+  function warrantyModels(brand, catName) {
+    const cats = catName ? [catName] : Object.keys(warranty);
+    return cats.flatMap((c) => Object.entries(warranty[c] || {})
+      .filter(([b]) => sameText(b, brand)).flatMap(([, ms]) => ms));
+  }
+
+  function fillDatalists() {
+    const cat = catalog();
+    const catName = $("catIn").value;
+    const brandVal = $("brandIn").value.trim();
+    const brands = uniqSorted([...warrantyBrands(catName), ...(catName ? [] : Object.keys(cat))]);
+    $("brandList").innerHTML = brands.map((b) => `<option value="${esc(b)}">`).join("");
+    const repoBrand = Object.keys(cat).find((x) => sameText(x, brandVal));
+    const models = brandVal ? uniqSorted([...warrantyModels(brandVal, catName), ...(repoBrand ? Object.keys(cat[repoBrand]) : [])]) : [];
+    $("modelList").innerHTML = models.map((m) => {
+      const has = repoBrand && Object.keys(cat[repoBrand]).some((x) => sameText(x, m));
+      return `<option value="${esc(m)}" label="${has ? "✓ มี Datasheet แล้ว" : "ยังไม่มี Datasheet"}">`;
+    }).join("");
+  }
+
+  async function loadWarrantyModels() {
+    try {
+      const r = await fetch(WARRANTY_MODELS_URL, { cache: "no-store" });
+      const j = await r.json();
+      if (j.status !== "ok" || !j.MODEL_LISTS) throw new Error("bad");
+      warranty = {};
+      for (const [c, brands] of Object.entries(j.BRAND_LISTS || {})) {
+        warranty[c] = {};
+        for (const b of brands) warranty[c][b] = ((j.MODEL_LISTS[c] || {})[b] || []).filter(Boolean);
+      }
+      const cats = Object.keys(warranty);
+      $("catIn").innerHTML = '<option value="">ทุกประเภท</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join("");
+      if (cats.includes("Inverter")) $("catIn").value = "Inverter";
+      const n = cats.reduce((s, c) => s + Object.values(warranty[c]).reduce((t, ms) => t + ms.length, 0), 0);
+      $("warrantyStatus").textContent = `ดึงรายการจากระบบรับประกันแล้ว ${n} รุ่น — เลือกจากรายการ หรือพิมพ์รุ่นใหม่เองก็ได้`;
+      fillDatalists(); renderMissing();
+    } catch {
+      $("warrantyStatus").textContent = "ดึงรายการจากระบบรับประกันไม่ได้ — พิมพ์ยี่ห้อ/รุ่นเองได้ตามปกติ";
+    }
+  }
+
+  function renderMissing() {
+    if (!repoLoaded || !Object.keys(warranty).length) return;
+    const cat = catalog();
+    const catName = $("catIn").value;
+    const missing = [];
+    for (const c of catName ? [catName] : Object.keys(warranty)) {
+      for (const [b, ms] of Object.entries(warranty[c] || {})) {
+        const repoBrand = Object.keys(cat).find((x) => sameText(x, b));
+        for (const m of ms) {
+          if (!repoBrand || !Object.keys(cat[repoBrand]).some((x) => sameText(x, m))) missing.push([b, m]);
+        }
+      }
+    }
+    $("missingCard").hidden = false;
+    $("missingTitle").textContent = `รุ่น${catName ? " " + catName : ""} ที่ยังไม่มี Datasheet (${missing.length} รุ่น)`;
+    const byBrand = {};
+    for (const [b, m] of missing) (byBrand[b] ||= []).push(m);
+    $("missing").innerHTML = missing.length ? Object.keys(byBrand).sort(coll.compare).map((b) =>
+      `<div class="brand-block"><div class="brand-name">${esc(b)} <small class="status">(${byBrand[b].length})</small></div>` +
+      byBrand[b].sort(coll.compare).map((m) => `<div class="doc-line"><span>${esc(m)}</span>
+        <button class="btn ghost" style="padding:3px 10px;font-size:.82rem" type="button" data-fill="${esc(b)}|${esc(m)}">อัปโหลด</button></div>`).join("") +
+      "</div>").join("") : '<p class="empty">ครบทุกรุ่นแล้ว 🎉</p>';
+    $("missing").querySelectorAll("[data-fill]").forEach((el) => el.onclick = () => {
+      const [b, m] = el.dataset.fill.split("|");
+      $("brandIn").value = b; $("modelIn").value = m; fillDatalists();
+      $("brandIn").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("drop").focus({ preventScroll: true });
+    });
+  }
+
+  // ---------- เลือกไฟล์ ----------
+  function addFiles(list) {
+    hideMsg("upMsg");
+    const bad = [];
+    for (const f of list) {
+      if (!ALLOWED.test(f.name)) { bad.push(`${f.name} (ไม่รองรับไฟล์ชนิดนี้)`); continue; }
+      if (f.size > MAX_MB * 1048576) { bad.push(`${f.name} (ใหญ่เกิน ${MAX_MB} MB)`); continue; }
+      const first = picked.length === 0;
+      picked.push({ file: f, name: first ? "Datasheet" : stem(f.name) });
+    }
+    if (bad.length) msg("upMsg", "err", "ข้ามไฟล์: " + bad.map(esc).join(", "));
+    renderPicked();
+  }
+
+  function renderPicked() {
+    $("files").innerHTML = picked.map((p, i) => `
+      <div class="file">
+        <div class="fn">${esc(p.file.name)}<small>${fmtSize(p.file.size)}</small></div>
+        <input type="text" data-i="${i}" value="${esc(p.name)}" placeholder="ชื่อเอกสารที่ลูกค้าเห็น เช่น Datasheet, คู่มือติดตั้ง" aria-label="ชื่อเอกสาร">
+        <button class="x" type="button" data-rm="${i}" aria-label="เอาออก">×</button>
+      </div>`).join("");
+    $("files").querySelectorAll("input").forEach((el) => el.oninput = () => picked[+el.dataset.i].name = el.value);
+    $("files").querySelectorAll("[data-rm]").forEach((el) => el.onclick = () => { picked.splice(+el.dataset.rm, 1); renderPicked(); });
+    $("uploadBtn").disabled = !picked.length;
+  }
+
+  const drop = $("drop");
+  drop.onclick = () => $("fileIn").click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileIn").click(); } };
+  $("fileIn").onchange = () => { addFiles([...$("fileIn").files]); $("fileIn").value = ""; };
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => addFiles([...e.dataTransfer.files]));
+
+  // ---------- อัปโหลด ----------
+  $("uploadBtn").onclick = async () => {
+    hideMsg("upMsg");
+    if (!cfg.repo || !cfg.token) { $("setupBox").open = true; return msg("upMsg", "err", "ยังไม่ได้ตั้งค่าการเชื่อมต่อ (กล่องด้านบน)"); }
+    const cat = catalog();
+    // ใช้ชื่อยี่ห้อ/รุ่นที่มีอยู่แล้วถ้าพิมพ์ตรงกัน (ไม่สนตัวพิมพ์เล็ก-ใหญ่) จะได้ไม่เกิดรุ่นซ้ำ
+    let brand = clean($("brandIn").value);
+    brand = Object.keys(cat).find((b) => b.toLowerCase() === brand.toLowerCase()) || brand;
+    let model = clean($("modelIn").value);
+    model = Object.keys(cat[brand] || {}).find((m) => m.toLowerCase() === model.toLowerCase()) || model;
+    if (!brand) return msg("upMsg", "err", "กรุณาใส่ยี่ห้อ");
+    if (!model) return msg("upMsg", "err", "กรุณาใส่รุ่น");
+
+    const names = picked.map((p) => clean(p.name) || stem(p.file.name));
+    const targets = picked.map((p, i) => `${ROOT_DIR}/${brand}/${model}/${names[i]}${ext(p.file.name)}`);
+    if (new Set(targets).size !== targets.length) return msg("upMsg", "err", "ชื่อเอกสารซ้ำกัน กรุณาตั้งชื่อให้ไม่ซ้ำ");
+
+    const changes = [];
+    // รุ่นที่เคยเก็บแบบไฟล์เดี่ยว (datasheets/ยี่ห้อ/รุ่น.pdf) → ย้ายเข้าโฟลเดอร์รุ่น เพื่อไม่ให้รุ่นซ้ำ 2 อัน
+    const single = paths.find((p) => p.split("/").length === 3 && p.startsWith(`${ROOT_DIR}/${brand}/`) && stem(p.split("/")[2]) === model);
+    const replaced = targets.filter((t) => paths.includes(t) ||
+      (single && t === `${ROOT_DIR}/${brand}/${model}/Datasheet${ext(single)}`));
+    if (replaced.length && !confirm(`มีไฟล์ชื่อนี้อยู่แล้ว จะถูกแทนที่ด้วยไฟล์ใหม่:\n${replaced.map((t) => "• " + t.split("/").pop()).join("\n")}\n\nดำเนินการต่อ?`)) return;
+
+    $("uploadBtn").disabled = true;
+    try {
+      if (single) {
+        $("upStatus").textContent = "กำลังจัดโฟลเดอร์รุ่นเดิม...";
+        const newPath = `${ROOT_DIR}/${brand}/${model}/Datasheet${ext(single)}`;
+        if (!targets.includes(newPath)) changes.push({ path: newPath, sha: shas[single] });
+        changes.push({ path: single, del: true });
+      }
+      for (let i = 0; i < picked.length; i++) {
+        $("upStatus").textContent = `กำลังอ่านไฟล์ ${i + 1}/${picked.length}...`;
+        changes.push({ path: targets[i], base64: await readBase64(picked[i].file) });
+      }
+      await commit(changes, `อัปโหลด ${brand} ${model} (${picked.length} ไฟล์)`, (s) => $("upStatus").textContent = s);
+      const site = siteUrl();
+      msg("upMsg", "ok", `✅ อัปโหลด <b>${esc(brand)} ${esc(model)}</b> แล้ว หน้าลูกค้าจะอัปเดตใน 1–2 นาที` +
+        (site ? ` · <a href="${esc(site)}#${encodeURIComponent(brand)}/${encodeURIComponent(model)}" target="_blank" rel="noopener">เปิดหน้ารุ่นนี้</a>` : "") +
+        ` · <a href="https://github.com/${esc(cfg.repo)}/actions" target="_blank" rel="noopener">ดูสถานะ</a>`);
+      picked = []; renderPicked(); $("modelIn").value = "";
+      loadList();
+    } catch (e) {
+      msg("upMsg", "err", esc(e.message));
+    } finally {
+      $("upStatus").textContent = "";
+      $("uploadBtn").disabled = !picked.length;
+    }
+  };
+
+  function siteUrl() {
+    // ถ้าหน้านี้เปิดจาก GitHub Pages อยู่แล้ว ใช้โฟลเดอร์เดียวกัน
+    if (location.protocol.startsWith("http") && !/localhost|127\.0\.0\.1/.test(location.hostname)) return new URL("./", location.href).href;
+    const [owner, name] = cfg.repo.split("/");
+    return owner && name ? `https://${owner.toLowerCase()}.github.io/${name}/` : "";
+  }
+
+  // ---------- ตั้งค่า ----------
+  function setStatus(ok) {
+    $("connStatus").innerHTML = ok == null ? "" : ok ? '· <b class="on">เชื่อมต่อแล้ว</b>' : '· <b class="off">ยังไม่เชื่อมต่อ</b>';
+  }
+
+  $("saveCfg").onclick = async () => {
+    cfg = { repo: $("repo").value.trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/+$/, ""), branch: $("branch").value.trim() || "main", token: $("token").value.trim() };
+    $("repo").value = cfg.repo;
+    if (!/^[^/\s]+\/[^/\s]+$/.test(cfg.repo)) return msg("cfgMsg", "err", "ใส่ repo ในรูปแบบ ชื่อบัญชี/ชื่อrepo เช่น solarcelldiy/datasheet");
+    if (!cfg.token) return msg("cfgMsg", "err", "กรุณาใส่รหัสเข้าใช้");
+    msg("cfgMsg", "info", "กำลังทดสอบ...");
+    try {
+      const info = await gh(repoPath());
+      if (info.permissions && !info.permissions.push) throw new Error("รหัสนี้อ่านได้อย่างเดียว เขียนไฟล์ไม่ได้");
+      await gh(refPath());
+      try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+      msg("cfgMsg", "ok", "เชื่อมต่อสำเร็จ ✅");
+      setStatus(true);
+      $("setupBox").open = false;
+      loadList();
+    } catch (e) { setStatus(false); msg("cfgMsg", "err", esc(e.message)); }
+  };
+
+  $("forget").onclick = () => {
+    try { localStorage.removeItem(KEY); } catch {}
+    cfg = { repo: cfg.repo, branch: cfg.branch, token: "" };
+    $("token").value = ""; setStatus(false);
+    msg("cfgMsg", "ok", "ลบรหัสออกจากเครื่องนี้แล้ว");
+  };
+
+  $("brandIn").oninput = fillDatalists;
+  $("catIn").onchange = () => { fillDatalists(); renderMissing(); };
+  loadWarrantyModels();
+  $("filter").oninput = renderList;
+  $("reload").onclick = loadList;
+
+  if (cfg.repo && cfg.token) { setStatus(true); loadList(); }
+  else { setStatus(false); $("setupBox").open = true; }
+</script>
+</body>
+</html>

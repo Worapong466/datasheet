@@ -1,0 +1,25 @@
+name: Datasheet reminder
+
+# เตือนรุ่นที่ยังไม่มี Datasheet ทุกวันจันทร์ 08:00 เวลาไทย (01:00 UTC)
+# กดรันเองได้ที่แท็บ Actions → Datasheet reminder → Run workflow
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Compare warranty models with datasheets/
+        run: node scripts/remind.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

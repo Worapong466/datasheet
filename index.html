@@ -3,8 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Datasheet สินค้า</title>
-<meta name="description" content="เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลด Datasheet">
+<title>SolarCellDIY · Datasheet สินค้า</title>
+<meta name="description" content="SolarCellDIY · เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลด Datasheet อินเวอร์เตอร์และอุปกรณ์โซลาร์">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta property="og:title" content="SolarCellDIY · Datasheet สินค้า">
+<meta property="og:description" content="เปิดดู / ดาวน์โหลด Datasheet อินเวอร์เตอร์และอุปกรณ์โซลาร์ ฟรี">
+<meta property="og:image" content="https://worapong466.github.io/datasheet/assets/logo.webp">
+<meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,6 +56,10 @@
   header p { margin: 4px 0 0; opacity: .85; font-size: .95rem; }
   .header-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   [hidden] { display: none !important; }
+  .brand-row { display: flex; align-items: center; gap: 14px; }
+  .logo { flex: none; background: #fff; border-radius: 12px; padding: 6px 8px; display: block; line-height: 0; }
+  .logo img { width: 112px; height: auto; display: block; }
+  @media (max-width: 600px) { .logo img { width: 84px; } .brand-row { gap: 10px; } }
   .head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
   .line-btn, .home-btn {
     display: inline-flex; align-items: center; gap: 6px; text-decoration: none; cursor: pointer;
@@ -136,9 +146,12 @@
 <body>
 <header>
   <div class="wrap header-row">
-    <div>
-      <h1 id="siteName">Datasheet สินค้า</h1>
-      <p>เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลดเอกสาร</p>
+    <div class="brand-row">
+      <a class="logo" id="logoLink" aria-label="SolarCellDIY หน้าร้าน"><img src="assets/logo.webp" alt="SolarCellDIY" width="112" height="80"></a>
+      <div>
+        <h1 id="siteName">Datasheet สินค้า</h1>
+        <p><b>SolarCellDIY</b> · เลือกยี่ห้อและโมเดล เพื่อเปิดดูหรือดาวน์โหลดเอกสาร</p>
+      </div>
     </div>
     <div class="head-btns">
       <a id="homeBtn" class="home-btn" hidden>← กลับหน้าร้าน</a>
@@ -196,7 +209,7 @@
 <script>
   // ===== ตั้งค่าร้าน (แก้ตรงนี้ได้) =====
   const CONFIG = {
-    siteName: "Datasheet สินค้า",            // ชื่อที่แสดงบนหัวเว็บ
+    siteName: "Datasheet สินค้า",            // ชื่อที่แสดงบนหัวเว็บ (ชื่อร้าน + โลโก้อยู่ใน HTML ด้านบน)
     lineUrl: "https://lin.ee/Tj2tkal",        // ลิงก์เพิ่มเพื่อน LINE OA (เว้นว่าง = ไม่แสดงปุ่ม)
     homeUrl: "https://www.scdpower.com/"       // ลิงก์หน้าร้าน (เว้นว่าง = ไม่แสดงปุ่ม)
   };
@@ -222,8 +235,9 @@
   }
   function goHome(e) { e.preventDefault(); location.href = withUtm(CONFIG.homeUrl, currentModel()); }
 
-  document.title = CONFIG.siteName;
+  document.title = "SolarCellDIY · " + CONFIG.siteName;
   $("siteName").textContent = CONFIG.siteName;
+  if (CONFIG.homeUrl) { $("logoLink").href = CONFIG.homeUrl; $("logoLink").onclick = goHome; }
   if (CONFIG.lineUrl) { $("lineBtn").href = $("ctaLine").href = CONFIG.lineUrl; $("lineBtn").hidden = false; }
   if (CONFIG.homeUrl) {
     for (const id of ["homeBtn", "ctaHome"]) { $(id).href = CONFIG.homeUrl; $(id).hidden = false; $(id).onclick = goHome; }

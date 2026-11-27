@@ -2,7 +2,7 @@
 // รองรับ 2 แบบ:
 //   datasheets/<ยี่ห้อ>/<โมเดล>.pdf            -> 1 รุ่น 1 ไฟล์
 //   datasheets/<ยี่ห้อ>/<โมเดล>/<ชื่อเอกสาร>.pdf -> 1 รุ่น หลายไฟล์ (เช่น Datasheet, คู่มือ)
-import { readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
+import { readdirSync, statSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join, extname, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,9 +40,31 @@ for (const b of list(join(ROOT, DIR)).filter((e) => e.isDirectory())) {
 }
 brands.sort(byName);
 
+// ภาพโปรโมชั่น: promos/promos.json กำหนดลำดับ/ลิงก์/ชื่อ (หน้าพนักงานเป็นคนเขียน)
+// ภาพที่วางไว้ใน promos/ แต่ไม่อยู่ใน promos.json จะต่อท้ายให้เอง (ลิงก์ = หน้าร้าน)
+const PROMO_DIR = "promos";
+const IMG = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+const promoFiles = list(join(ROOT, PROMO_DIR))
+  .filter((e) => e.isFile() && IMG.has(extname(e.name).toLowerCase()))
+  .map((e) => e.name);
+let promoConfig = [];
+try {
+  const raw = JSON.parse(readFileSync(join(ROOT, PROMO_DIR, "promos.json"), "utf8").replace(/^﻿/, ""));
+  if (Array.isArray(raw)) promoConfig = raw;
+} catch {}
+const promos = [];
+for (const p of promoConfig) {
+  if (p && promoFiles.includes(p.file) && !promos.some((x) => x.file === p.file)) {
+    promos.push({ file: p.file, image: `${PROMO_DIR}/${p.file}`, title: String(p.title || ""), link: String(p.link || "") });
+  }
+}
+for (const f of promoFiles.sort((a, b) => collator.compare(a, b))) {
+  if (!promos.some((x) => x.file === f)) promos.push({ file: f, image: `${PROMO_DIR}/${f}`, title: "", link: "" });
+}
+
 writeFileSync(
   join(ROOT, "data.json"),
-  JSON.stringify({ updated: new Date().toISOString(), brands }, null, 2)
+  JSON.stringify({ updated: new Date().toISOString(), brands, promos }, null, 2)
 );
 const n = brands.reduce((s, b) => s + b.models.length, 0);
-console.log(`data.json: ${brands.length} brands, ${n} models`);
+console.log(`data.json: ${brands.length} brands, ${n} models, ${promos.length} promos`);

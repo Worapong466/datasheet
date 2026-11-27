@@ -70,6 +70,18 @@
   }
   .also label.on { border-color: var(--brand); background: var(--brand-soft); }
   .also label small { color: var(--muted); }
+  .promo-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-top: 10px; }
+  .promo-row img { width: 120px; height: 72px; object-fit: cover; border-radius: 8px; background: var(--bg); display: block; }
+  .promo-row .fields { display: grid; gap: 6px; }
+  .promo-row .fields input { padding: 7px 10px; font-size: .9rem; }
+  .promo-row .tools { display: flex; flex-direction: column; gap: 4px; }
+  .promo-row .tools button { padding: 3px 9px; font-size: .82rem; }
+  .promo-row .new { color: var(--ok); font-size: .78rem; font-weight: 600; }
+  @media (max-width: 640px) {
+    .promo-row { grid-template-columns: 90px 1fr; }
+    .promo-row img { width: 90px; height: 60px; }
+    .promo-row .tools { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  }
   .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: .92rem; display: none; }
   .msg.show { display: block; }
   .msg.ok { background: var(--ok-soft); color: var(--ok); }
@@ -176,6 +188,20 @@
       <span class="status" id="upStatus"></span>
     </div>
     <div class="msg" id="upMsg"></div>
+  </section>
+
+  <!-- ภาพโปรโมชั่น -->
+  <section class="card">
+    <h2>ภาพโปรโมชั่น (หน้าลูกค้า)</h2>
+    <div class="hint" style="margin:-6px 0 10px">แสดงใต้ช่องค้นหาในหน้าลูกค้า แนะนำ 2 ภาพ ขนาดเท่ากัน (เช่น 1200×628 หรือ 1080×1080) ไฟล์ละไม่เกิน 1 MB · ลิงก์ว่าง = ไปหน้าโปรของร้าน</div>
+    <div id="promoList"><p class="empty">ตั้งค่าการเชื่อมต่อก่อน แล้วรายการจะขึ้นที่นี่</p></div>
+    <div class="row">
+      <button class="btn ghost" id="promoAdd" type="button">＋ เพิ่มภาพโปรโมชั่น</button>
+      <input id="promoFile" type="file" accept=".jpg,.jpeg,.png,.webp,.gif" hidden>
+      <button class="btn" id="promoSave" type="button" disabled>บันทึกโปรโมชั่น</button>
+      <span class="status" id="promoStatus"></span>
+    </div>
+    <div class="msg" id="promoMsg"></div>
   </section>
 
   <!-- รายการที่มีอยู่ -->
@@ -317,6 +343,7 @@
       paths = entries.map((e) => e.path);
       shas = Object.fromEntries(entries.map((e) => [e.path, e.sha]));
       repoLoaded = true;
+      loadPromos(tree.tree);
       renderList(); fillDatalists(); renderMissing();
     } catch (e) {
       $("list").innerHTML = "";
@@ -599,6 +626,112 @@
     } finally {
       $("upStatus").textContent = "";
       $("uploadBtn").disabled = !picked.length;
+    }
+  };
+
+  // ---------- ภาพโปรโมชั่น ----------
+  // เก็บที่ promos/ ใน repo: ไฟล์ภาพ + promos.json (ลำดับ, ชื่อ, ลิงก์) — build-index.mjs รวมเข้า data.json
+  const PROMO_DIR = "promos";
+  const PROMO_IMG = /\.(jpe?g|png|webp|gif)$/i;
+  let promos = [];        // [{ file, title, link, newFile?, preview? }]
+  let promoRemoved = [];  // path ที่จะลบตอนบันทึก
+  let promoDirty = false;
+
+  const utf8ToB64 = (s) => { let bin = ""; new TextEncoder().encode(s).forEach((b) => bin += String.fromCharCode(b)); return btoa(bin); };
+  const b64ToUtf8 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), (c) => c.charCodeAt(0)));
+  const setPromoDirty = (v = true) => { promoDirty = v; $("promoSave").disabled = !v; };
+
+  async function loadPromos(entries) {
+    promoRemoved = []; setPromoDirty(false);
+    const names = entries
+      .filter((e) => e.type === "blob" && e.path.split("/").length === 2 && e.path.startsWith(PROMO_DIR + "/") && PROMO_IMG.test(e.path))
+      .map((e) => e.path.split("/")[1]);
+    let config = [];
+    const cfgEntry = entries.find((e) => e.path === PROMO_DIR + "/promos.json");
+    if (cfgEntry) {
+      try {
+        const parsed = JSON.parse(b64ToUtf8((await gh(repoPath() + "/git/blobs/" + cfgEntry.sha)).content));
+        if (Array.isArray(parsed)) config = parsed;
+      } catch {}
+    }
+    promos = [];
+    for (const c of config) {
+      if (c && names.includes(c.file) && !promos.some((p) => p.file === c.file)) promos.push({ file: c.file, title: c.title || "", link: c.link || "" });
+    }
+    for (const n of names.sort(coll.compare)) if (!promos.some((p) => p.file === n)) promos.push({ file: n, title: "", link: "" });
+    renderPromoList();
+  }
+
+  function renderPromoList() {
+    const raw = (f) => `https://raw.githubusercontent.com/${cfg.repo}/${encodeURIComponent(cfg.branch)}/${PROMO_DIR}/${encodeURIComponent(f)}`;
+    $("promoList").innerHTML = promos.length ? promos.map((p, i) => `
+      <div class="promo-row">
+        <img src="${esc(p.preview || raw(p.file))}" alt="">
+        <div class="fields">
+          <input type="text" data-k="title" data-i="${i}" value="${esc(p.title)}" placeholder="ชื่อโปร (ใช้ดูสถิติใน GA4) เช่น โปรแผงโซล่า ธ.ค.">
+          <input type="text" data-k="link" data-i="${i}" value="${esc(p.link)}" placeholder="ลิงก์ปลายทาง (ว่าง = หน้าโปรของร้าน)">
+          ${p.newFile ? '<span class="new">ภาพใหม่ — ยังไม่ได้บันทึก</span>' : ""}
+        </div>
+        <div class="tools">
+          <button class="btn ghost" type="button" data-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="เลื่อนขึ้น">↑</button>
+          <button class="btn ghost" type="button" data-down="${i}" ${i === promos.length - 1 ? "disabled" : ""} aria-label="เลื่อนลง">↓</button>
+          <button class="btn danger" type="button" data-rm="${i}">ลบ</button>
+        </div>
+      </div>`).join("") : '<p class="empty">ยังไม่มีภาพโปรโมชั่น — กด "เพิ่มภาพโปรโมชั่น"</p>';
+
+    $("promoList").querySelectorAll("input").forEach((el) => el.oninput = () => { promos[+el.dataset.i][el.dataset.k] = el.value; setPromoDirty(); });
+    const move = (i, d) => { [promos[i], promos[i + d]] = [promos[i + d], promos[i]]; setPromoDirty(); renderPromoList(); };
+    $("promoList").querySelectorAll("[data-up]").forEach((el) => el.onclick = () => move(+el.dataset.up, -1));
+    $("promoList").querySelectorAll("[data-down]").forEach((el) => el.onclick = () => move(+el.dataset.down, 1));
+    $("promoList").querySelectorAll("[data-rm]").forEach((el) => el.onclick = () => {
+      const p = promos[+el.dataset.rm];
+      if (!p.newFile) promoRemoved.push(`${PROMO_DIR}/${p.file}`);
+      promos.splice(+el.dataset.rm, 1);
+      setPromoDirty(); renderPromoList();
+    });
+  }
+
+  $("promoAdd").onclick = () => {
+    if (!cfg.repo || !cfg.token) { $("setupBox").open = true; return msg("promoMsg", "err", "ยังไม่ได้ตั้งค่าการเชื่อมต่อ (กล่องด้านบน)"); }
+    $("promoFile").click();
+  };
+  $("promoFile").onchange = () => {
+    const f = $("promoFile").files[0];
+    $("promoFile").value = "";
+    if (!f) return;
+    if (!PROMO_IMG.test(f.name)) return msg("promoMsg", "err", "รองรับเฉพาะ JPG / PNG / WEBP / GIF");
+    if (f.size > 5 * 1048576) return msg("promoMsg", "err", `ไฟล์ใหญ่เกินไป (${fmtSize(f.size)}) — ไม่เกิน 5 MB, แนะนำไม่เกิน 1 MB`);
+    const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    promos.push({ file: `promo-${stamp}${ext(f.name)}`, title: stem(f.name), link: "", newFile: f, preview: URL.createObjectURL(f) });
+    if (f.size > 1048576) msg("promoMsg", "info", `ภาพนี้ ${fmtSize(f.size)} — ใช้ได้ แต่ถ้าย่อให้ต่ำกว่า 1 MB หน้าเว็บจะโหลดเร็วขึ้น`);
+    else hideMsg("promoMsg");
+    if (promos.length > 4) msg("promoMsg", "info", "มีภาพมากกว่า 4 ภาพ — หน้าลูกค้าจะยาวขึ้น แนะนำ 2 ภาพ");
+    setPromoDirty(); renderPromoList();
+  };
+
+  $("promoSave").onclick = async () => {
+    const bad = promos.find((p) => p.link.trim() && !/^https?:\/\//i.test(p.link.trim()));
+    if (bad) return msg("promoMsg", "err", `ลิงก์ต้องขึ้นต้นด้วย https:// — ตรวจภาพ "${esc(bad.title || bad.file)}"`);
+    $("promoSave").disabled = true;
+    try {
+      const changes = [];
+      for (const p of promos.filter((x) => x.newFile)) {
+        $("promoStatus").textContent = "กำลังอ่านภาพ...";
+        changes.push({ path: `${PROMO_DIR}/${p.file}`, base64: await readBase64(p.newFile) });
+      }
+      promoRemoved.forEach((path) => changes.push({ path, del: true }));
+      const config = promos.map((p) => ({ file: p.file, title: p.title.trim(), link: p.link.trim() }));
+      changes.push({ path: `${PROMO_DIR}/promos.json`, base64: utf8ToB64(JSON.stringify(config, null, 2) + "\n") });
+      await commit(changes, `อัปเดตภาพโปรโมชั่น (${promos.length} ภาพ)`, (s) => $("promoStatus").textContent = s);
+      const site = siteUrl();
+      msg("promoMsg", "ok", `✅ บันทึกแล้ว — หน้าลูกค้าจะเปลี่ยนใน 1–2 นาที` + (site ? ` · <a href="${esc(site)}" target="_blank" rel="noopener">เปิดหน้าลูกค้า</a>` : ""));
+      loadList();
+    } catch (e) {
+      msg("promoMsg", "err", esc(e.message));
+      setPromoDirty();
+    } finally {
+      $("promoStatus").textContent = "";
     }
   };
 

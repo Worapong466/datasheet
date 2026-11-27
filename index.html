@@ -82,6 +82,12 @@
   header p { margin: 4px 0 0; opacity: .85; font-size: .95rem; }
   .header-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   [hidden] { display: none !important; }
+  .promos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+  .promos.one { grid-template-columns: 1fr; }
+  .promos a { display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--card); line-height: 0; transition: transform .15s, box-shadow .15s; }
+  .promos a:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+  .promos img { width: 100%; height: auto; display: block; }
+  @media (max-width: 600px) { .promos { grid-template-columns: 1fr; } }
   .brand-row { display: flex; align-items: center; gap: 14px; }
   .logo { flex: none; background: #fff; border-radius: 12px; padding: 6px 8px; display: block; line-height: 0; }
   .logo img { width: 112px; height: auto; display: block; }
@@ -229,6 +235,8 @@
     </div>
   </section>
 
+  <section class="promos" id="promos" hidden aria-label="โปรโมชั่น"></section>
+
   <section id="detail" class="card">
     <div class="detail-head">
       <div>
@@ -297,7 +305,8 @@
   const CONFIG = {
     siteName: "Datasheet สินค้า",            // ชื่อที่แสดงบนหัวเว็บ (ชื่อร้าน + โลโก้อยู่ใน HTML ด้านบน)
     lineUrl: "https://lin.ee/Tj2tkal",        // ลิงก์เพิ่มเพื่อน LINE OA (เว้นว่าง = ไม่แสดงปุ่ม)
-    homeUrl: "https://www.scdpower.com/"       // ลิงก์หน้าร้าน (เว้นว่าง = ไม่แสดงปุ่ม)
+    homeUrl: "https://www.scdpower.com/",      // ลิงก์หน้าร้าน (เว้นว่าง = ไม่แสดงปุ่ม)
+    promoUrl: "https://www.scdpower.com/"      // ลิงก์ตั้งต้นของภาพโปรโมชั่น (ถ้าภาพนั้นไม่ได้กำหนดลิงก์เอง)
   };
   // ====================================
 
@@ -480,6 +489,26 @@
     catch { prompt("คัดลอกลิงก์นี้:", url); }
   };
 
+  // ---------- ภาพโปรโมชั่น (จัดการจากหน้าพนักงาน หรือวางไฟล์ใน promos/ บน GitHub) ----------
+  function renderPromos(list) {
+    const box = $("promos");
+    if (!list.length) { box.hidden = true; return; }
+    box.classList.toggle("one", list.length === 1);
+    box.innerHTML = list.map((p, i) => `<a href="${esc(p.link || CONFIG.promoUrl || CONFIG.homeUrl)}" data-i="${i}">
+        <img src="${fileUrl(p.image)}" alt="${esc(p.title || "โปรโมชั่น SolarCellDIY")}" loading="lazy"></a>`).join("");
+    box.hidden = false;
+    box.querySelectorAll("a").forEach((a) => {
+      const p = list[+a.dataset.i];
+      const promo = { promotion_name: p.title || p.file, creative_name: p.file, creative_slot: "slot_" + (+a.dataset.i + 1) };
+      a.onclick = (e) => {
+        e.preventDefault();
+        const url = withUtm(a.getAttribute("href"), "promo_" + (p.title || p.file));
+        track("select_promotion", promo, () => { location.href = url; });
+      };
+    });
+    track("view_promotion", { promotion_name: list.map((p) => p.title || p.file).join(" | ") });
+  }
+
   // ---------- แบนเนอร์คุกกี้ (PDPA) ----------
   // ยอมรับ / ปฏิเสธ กดครั้งเดียวจบ ส่วน "ตั้งค่า" เป็นทางเลือกสำหรับคนที่อยากเลือกเอง
   // แบนเนอร์โผล่ตั้งแต่เปิดเว็บครั้งแรก — ไม่บังเนื้อหา ใช้เว็บได้ตลอด
@@ -515,7 +544,7 @@
 
   fetch("data.json", { cache: "no-store" })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then((d) => { DATA = d; fillBrands(); fromHash(); })
+    .then((d) => { DATA = d; fillBrands(); renderPromos(d.promos || []); fromHash(); })
     .catch(() => {
       brandSel.innerHTML = '<option value="">โหลดรายการไม่สำเร็จ</option>';
       $("stats").textContent = "ไม่พบไฟล์ data.json — รอระบบอัปเดตสักครู่แล้วลองรีเฟรช";
